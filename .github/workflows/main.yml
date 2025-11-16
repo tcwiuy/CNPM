@@ -66,11 +66,13 @@ jobs:
           ./mvnw clean package -DskipTests
 
       - name: Debug: list build context
+        env:
+          SERVICE: ${{ matrix.service }}
         run: |
-          echo "Listing context for ${{ matrix.service }}"
-          ls -la ${{ matrix.service }} || true
+          echo "Listing context for $SERVICE"
+          ls -la "$SERVICE" || true
           echo "Dockerfile contents (if exists):"
-          if [ -f ${{ matrix.service }}/Dockerfile ]; then cat ${{ matrix.service }}/Dockerfile; else echo 'No Dockerfile found'; fi
+          if [ -f "$SERVICE/Dockerfile" ]; then cat "$SERVICE/Dockerfile"; else echo 'No Dockerfile found'; fi
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2

@@ -1,0 +1,58 @@
+name: Food Ordering CI/CD Pipeline
+
+# Sự kiện kích hoạt: Chạy khi có code push vào nhánh main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # JOB 1: BUILD BACKEND (JAVA SPRING BOOT)
+  build-backend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Danh sách các service cần build
+        service: [api-gateway, eureka-service, user-service, order-service, restaurant-service, notification-service]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build ${{ matrix.service }} with Maven
+        run: |
+          cd ${{ matrix.service }}
+          chmod +x mvnw
+          ./mvnw clean package -DskipTests
+        # -DskipTests: Bỏ qua chạy test để build nhanh hơn (tạm thời cho người mới)
+
+  # JOB 2: BUILD FRONTEND (ANGULAR)
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Build Angular App
+        run: |
+          cd frontend
+          npm run build

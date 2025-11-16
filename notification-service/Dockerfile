@@ -1,14 +1,13 @@
-# --- Giai đoạn 1: Build code (Dùng image Maven) ---
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
-WORKDIR /app
-COPY . .
-# Lệnh này sẽ tự tải thư viện và đóng gói thành file .jar ngay trong Docker
-RUN mvn clean package -DskipTests
+# Multi-stage Dockerfile for notification-service (Spring Boot)
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+WORKDIR /workspace
+COPY mvnw pom.xml ./
+COPY .mvn .mvn
+COPY src ./src
+RUN chmod +x mvnw && ./mvnw -B clean package -DskipTests
 
-# --- Giai đoạn 2: Chạy ứng dụng (Dùng image Java nhẹ) ---
-FROM eclipse-temurin:21-jdk-alpine
+FROM eclipse-temurin:21-jre
 WORKDIR /app
-# Copy file .jar từ giai đoạn 1 (build) sang giai đoạn 2
-COPY --from=build /app/target/*.jar app.jar
-
-ENTRYPOINT ["java","-jar","app.jar"]
+COPY --from=build /workspace/target/*.jar app.jar
+EXPOSE 8084
+ENTRYPOINT ["java","-jar","/app/app.jar"]

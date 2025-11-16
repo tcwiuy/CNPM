@@ -1,14 +1,15 @@
-# Multi-stage Dockerfile for Angular frontend
-# Build stage
-FROM node:18 AS build
+# --- Giai đoạn 1: Build Angular ---
+FROM node:18-alpine as build
 WORKDIR /app
-COPY frontend/package*.json ./
-RUN npm ci --silent
-COPY frontend/ ./
-RUN npm run build -- --output-path=dist
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
 
-# Production stage
-FROM nginx:stable-alpine
-COPY --from=build /app/dist/ /usr/share/nginx/html/
+# --- Giai đoạn 2: Chạy Nginx ---
+FROM nginx:alpine
+# Copy toàn bộ nội dung trong thư mục con đầu tiên tìm thấy trong dist/
+# Vì Angular thường build ra dist/tên-project/, lệnh này sẽ lấy đúng nội dung web
+COPY --from=build /app/dist/*/ /usr/share/nginx/html/
+
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]

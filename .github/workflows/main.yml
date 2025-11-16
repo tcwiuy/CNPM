@@ -1,37 +1,46 @@
 name: Food Ordering CI/CD Pipeline
 
-# Sự kiện kích hoạt: Chạy khi có code push vào nhánh main
+# Cho phép workflow có thể push packages (để đẩy image lên GHCR nếu bật)
+permissions:
+  contents: read
+  packages: write
+
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  push:
+    branches: ["main"]
 
 jobs:
-  # JOB 1: BUILD BACKEND (JAVA SPRING BOOT)
+  # JOB 1: BUILD BACKEND (JAVA SPRING BOOT) + TESTS
   build-backend:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Danh sách các service cần build
         service: [api-gateway, eureka-service, user-service, order-service, restaurant-service, notification-service]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build ${{ matrix.service }} with Maven
+      - name: Build and test ${{ matrix.service }} with Maven
         run: |
           cd ${{ matrix.service }}
           chmod +x mvnw
-          ./mvnw clean package -DskipTests
-        # -DskipTests: Bỏ qua chạy test để build nhanh hơn (tạm thời cho người mới)
+          ./mvnw -B clean verify
+        # Note: 'verify' will run tests. To skip tests, change to '-DskipTests'
+
+      - name: Upload build artifact for ${{ matrix.service }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}-target
+          path: ${{ matrix.service }}/target
 
   # JOB 2: BUILD FRONTEND (ANGULAR)
   build-frontend:
@@ -50,9 +59,110 @@ jobs:
       - name: Install Dependencies
         run: |
           cd frontend
-          npm install
+          npm ci
+
+      - name: Run frontend tests (if any)
+        run: |
+          cd frontend
+          npm test --silent || true
 
       - name: Build Angular App
         run: |
           cd frontend
-          npm run build
+          npm run build -- --output-path=dist
+
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+  # JOB 3: OPTIONAL - Build and Push Docker images (GHCR or Docker Hub)
+  docker-images:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    env:
+      REPO_OWNER: ${{ github.repository_owner }}
+      REPO_NAME: ${{ github.event.repository.name }}
+      IMAGE_TAG: ${{ github.sha }}
+    strategy:
+      matrix:
+        image: [api-gateway, eureka-service, user-service, order-service, restaurant-service, notification-service, frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to registry (GHCR)
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.image }} image
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ matrix.image == 'frontend' && 'frontend' || matrix.image }}
+          file: ${{ matrix.image == 'frontend' && 'frontend/Dockerfile' || matrix.image + '/Dockerfile' }}
+          push: true
+          tags: |
+            ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}-${{ matrix.image }}:${{ env.IMAGE_TAG }}
+            ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}-${{ matrix.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Note about Docker Hub (optional)
+        if: ${{ always() }}
+        run: |
+          echo "To push to Docker Hub instead, set secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN and replace GHCR login step."
+
+      - name: Save image name
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-info-${{ matrix.image }}
+          path: |
+            <<<"ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}-${{ matrix.image }}:${{ env.IMAGE_TAG }}" > image-name.txt
+
+# JOB 3: BUILD & PUSH DOCKER IMAGES
+  docker-build-push:
+    needs: [build-backend, build-frontend] # Chỉ chạy khi 2 bước trên thành công
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api-gateway, eureka-service, user-service, order-service, restaurant-service, notification-service]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Chúng ta cần build file .jar trước khi copy vào Docker
+      - name: Build Jar for Docker
+        run: |
+          cd ${{ matrix.service }}
+          chmod +x mvnw
+          ./mvnw clean package -DskipTests
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          # Image sẽ có tên: username/tên-service:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:latest

@@ -65,21 +65,36 @@ jobs:
           chmod +x mvnw
           ./mvnw clean package -DskipTests
 
+      - name: Debug: list build context
+        run: |
+          echo "Listing context for ${{ matrix.service }}"
+          ls -la ${{ matrix.service }} || true
+          echo "Dockerfile contents (if exists):"
+          if [ -f ${{ matrix.service }}/Dockerfile ]; then cat ${{ matrix.service }}/Dockerfile; else echo 'No Dockerfile found'; fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       # Đăng nhập vào Docker Hub bằng chìa khóa bạn đã cất
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      # Đóng gói và Đẩy lên
-      - uses: docker/build-push-action@v5
+      # Đóng gói và Đẩy lên (explicit Dockerfile + platform để tránh lỗi không tìm thấy file)
+      - name: Build and push image
+        uses: docker/build-push-action@v5
         with:
-          # Chỉ cho Docker biết code nằm ở đâu (ví dụ: ./user-service)
-          # Nó sẽ tự tìm file Dockerfile trong thư mục đó
           context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
           push: true
-          # Đặt tên thẻ bài: ten-user/ten-service:latest
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+          platforms: linux/amd64
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ github.sha }}
 
   docker-frontend:
     needs: build-frontend
@@ -87,13 +102,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Debug: list frontend build
+        run: |
+          echo "Listing frontend/dist"
+          ls -la frontend || true
+          if [ -d frontend/dist ]; then ls -la frontend/dist || true; else echo 'No frontend/dist found'; fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - uses: docker/build-push-action@v5
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
         with:
           context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/food-ordering-frontend:latest
+          platforms: linux/amd64
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/food-ordering-frontend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/food-ordering-frontend:${{ github.sha }}

@@ -129,12 +129,13 @@ jobs:
           path: |
             <<<"ghcr.io/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}-${{ matrix.image }}:${{ env.IMAGE_TAG }}" > image-name.txt
 
-# JOB 3: BUILD & PUSH DOCKER IMAGES (BACKEND)
+# JOB 3: BUILD & PUSH BACKEND (JAVA)
   docker-backend:
-    needs: build-backend  # Chỉ chạy sau khi build-backend thành công
+    needs: build-backend
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        # Danh sách tên thư mục của các service Java
         service: [api-gateway, eureka-service, user-service, order-service, restaurant-service, notification-service]
     steps:
       - name: Checkout code
@@ -146,7 +147,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
       
-      # Cần build lại file .jar để có cái mà copy vào Docker
+      # Build lại file .jar (vì file này không được lưu từ job trước qua job này)
       - name: Build Jar
         run: |
           cd ${{ matrix.service }}
@@ -162,13 +163,15 @@ jobs:
       - name: Build and Push Docker image
         uses: docker/build-push-action@v5
         with:
+          # Context là thư mục chứa code, Docker sẽ tự tìm file 'Dockerfile' trong này
           context: ./${{ matrix.service }}
           push: true
+          # Tên Image sẽ là: username/tên-service:latest
           tags: ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:latest
 
-  # JOB 4: BUILD & PUSH DOCKER IMAGE (FRONTEND)
+  # JOB 4: BUILD & PUSH FRONTEND (ANGULAR)
   docker-frontend:
-    needs: build-frontend # Chỉ chạy sau khi build-frontend thành công
+    needs: build-frontend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -183,6 +186,7 @@ jobs:
       - name: Build and Push Docker image
         uses: docker/build-push-action@v5
         with:
+          # Chỉ thẳng vào thư mục frontend, Docker sẽ tự tìm file 'Dockerfile' trong đó
           context: ./frontend
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/food-ordering-frontend:latest

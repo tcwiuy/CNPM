@@ -97,3 +97,28 @@ jobs:
           context: ./frontend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/food-ordering-frontend:latest
+
+  # --- PHẦN 3: TỰ ĐỘNG DEPLOY (CD) ---
+  # Job mới được thêm vào
+  deploy:
+    name: Deploy to Azure VM
+    runs-on: ubuntu-latest
+    # Bắt buộc 2 job build image phải thành công thì mới deploy
+    needs: [docker-backend, docker-frontend] 
+    
+    steps:
+    - name: Deploy to Server
+      # Sử dụng action có sẵn để SSH
+      uses: appleboy/ssh-action@master
+      with:
+        # Lấy thông tin từ GitHub Secrets mà bạn đã tạo
+        host: ${{ secrets.AZURE_SSH_HOST }}
+        username: ${{ secrets.AZURE_SSH_USER }}
+        key: ${{ secrets.AZURE_SSH_PRIVATE_KEY }}
+        
+        # Các lệnh sẽ chạy trên VPS
+        script: |
+          cd ~/CNPM
+          sudo docker-compose pull
+          sudo docker-compose up -d
+          sudo docker image prune -f

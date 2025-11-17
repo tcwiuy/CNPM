@@ -1,19 +1,19 @@
-version: '3'
 services:
+  # --- INFRASTRUCTURE ---
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - 22181:2181
+      - "22181:2181"
 
   kafka:
     image: confluentinc/cp-kafka:latest
     depends_on:
       - zookeeper
     ports:
-      - 29092:29092
+      - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -21,3 +21,65 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # --- DISCOVERY SERVER ---
+  eureka-service:
+    image: tcwiuy/eureka-service:latest
+    ports:
+      - "8761:8761"
+    environment:
+      - EUREKA_CLIENT_REGISTER_WITH_EUREKA=false
+      - EUREKA_CLIENT_FETCH_REGISTRY=false
+
+  # --- API GATEWAY ---
+  api-gateway:
+    image: tcwiuy/api-gateway:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+    depends_on:
+      - eureka-service
+
+  # --- MICROSERVICES ---
+  user-service:
+    image: tcwiuy/user-service:latest
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+    depends_on:
+      - eureka-service
+    volumes:
+      - ./user-service/src/main/resources/uploads:/app/uploads
+
+  restaurant-service:
+    image: tcwiuy/restaurant-service:latest
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+    depends_on:
+      - eureka-service
+    volumes:
+      - ./restaurant-service/src/main/resources/uploads:/app/uploads
+
+  order-service:
+    image: tcwiuy/order-service:latest
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+    depends_on:
+      - eureka-service
+
+  notification-service:
+    image: tcwiuy/notification-service:latest
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - eureka-service
+      - kafka
+
+  # --- FRONTEND ---
+  frontend:
+    image: tcwiuy/food-ordering-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway

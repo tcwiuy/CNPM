@@ -8,6 +8,7 @@ spring:
     gateway:
       routes:
         - id: restaurant-service
+          # SỬA Ở ĐÂY
           uri: lb://restaurant-service
           predicates:
             - Path=/api/v1/restaurants/**, /api/v1/menu-items/**
@@ -22,6 +23,7 @@ spring:
                 redis-rate-limiter.burstCapacity: 50 # có thể chứa tối đa 20 request tại bất kỳ thời điểm nào.
                 redis-rate-limiter.requestedTokens: 1 # mỗi request sẽ tiêu tốn 1 token
         - id: order-service
+          # SỬA Ở ĐÂY
           uri: lb://order-service
           predicates:
             - Path=/api/v1/orders/**
@@ -36,6 +38,7 @@ spring:
                 redis-rate-limiter.burstCapacity: 50
                 redis-rate-limiter.requestedTokens: 1
         - id: user-service
+          # SỬA Ở ĐÂY
           uri: lb://user-service
           predicates:
             - Path=/api/v1/users/**, /api/v1/auth/**

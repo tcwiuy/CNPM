@@ -4,12 +4,16 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+# File angular.json build ra "dist/frontend"
 RUN npm run build
 
 # --- Giai đoạn 2: Chạy Nginx ---
 FROM nginx:alpine
-# Copy toàn bộ nội dung trong thư mục con đầu tiên tìm thấy trong dist/
-# Vì Angular thường build ra dist/tên-project/, lệnh này sẽ lấy đúng nội dung web
-COPY --from=build /app/dist/*/ /usr/share/nginx/html/
+
+# SỬA 1: Copy từ thư mục build đúng của Angular 17 (dist/frontend/browser)
+COPY --from=build /app/dist/frontend/browser/ /usr/share/nginx/html/
+
+# SỬA 2: Thêm file cấu hình nginx.conf để chạy SPA
+COPY ./frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

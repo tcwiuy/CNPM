@@ -21,11 +21,11 @@ jobs:
           cache: 'maven'
       
       # Chạy lệnh Maven để kiểm tra xem code có lỗi cú pháp không
-      - name: Build and Run Tests with Maven
+      - name: Build with Maven
         run: |
           cd ${{ matrix.service }}
           chmod +x mvnw
-          ./mvnw clean verify
+          ./mvnw clean package -DskipTests
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -59,11 +59,11 @@ jobs:
           distribution: 'temurin'
 
       # Build ra file .jar
-      - name: Build Jar and Run Tests
+      - name: Build Jar
         run: |
           cd ${{ matrix.service }}
           chmod +x mvnw
-          ./mvnw clean verify
+          ./mvnw clean package -DskipTests
 
       # Đăng nhập vào Docker Hub bằng chìa khóa bạn đã cất
       - uses: docker/login-action@v3

@@ -94,7 +94,7 @@ public class AuthService {
                     registerRequest.getEmail(),
                     registerRequest.getUsername()
             );
-            notificationClient.sendWelcomeEmail(emailRequest);
+            //notificationClient.sendWelcomeEmail(emailRequest);
         }).exceptionally(ex -> {
             log.error("Failed to send welcome email to {}", registerRequest.getEmail(), ex);
             return null;

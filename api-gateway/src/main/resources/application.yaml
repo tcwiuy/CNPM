@@ -86,11 +86,12 @@ eureka:
     preferIpAddress: true
 
 # Management endpoint exposure for monitoring
+# CÀI ĐẶT GIÁM SÁT ĐÃ CÓ SẴN Ở ĐÂY
 management:
   endpoints:
     web:
       exposure:
-        include: '*'
+        include: '*' # Đã bao gồm 'prometheus'
   endpoint:
     health:
       show-details: always

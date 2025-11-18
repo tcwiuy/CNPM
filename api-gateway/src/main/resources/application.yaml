@@ -2,7 +2,7 @@ spring:
   application:
     name: api-gateway
   redis:
-    host: localhost
+    host: redis
     port: 6379
   cloud:
     gateway:

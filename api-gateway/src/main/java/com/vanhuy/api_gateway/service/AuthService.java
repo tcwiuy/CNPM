@@ -14,8 +14,7 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class AuthService {
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
-    private static final String AUTH_SERVICE_URL = "http://localhost:8081/api/v1/auth/validateToken";
-
+    private static final String AUTH_SERVICE_URL = "http://user-service:8081/api/v1/auth/validateToken";
     @Autowired
     private RestTemplate restTemplate;
 

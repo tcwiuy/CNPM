@@ -37,16 +37,8 @@ public class AuthControllerTest {
     @Test
     void testRegisterSuccess() throws Exception {
         // Given
-        RegisterRequest registerRequest = new RegisterRequest(
-                "username",
-                "thanvanhuyy@gmail.com",
-                "password123");
-
-        RegisterResponse registerResponse = new RegisterResponse();
-        registerResponse.setMessage("User registered successfully");
-        registerResponse.setUsername(registerRequest.getUsername());
-        registerResponse.setEmail(registerRequest.getEmail());
-
+        RegisterRequest registerRequest = new RegisterRequest("username", "thanvanhuyy@gmail.com", "password");
+        RegisterResponse registerResponse = new RegisterResponse("User registered successfully");
         when(authService.register(any(RegisterRequest.class))).thenReturn(registerResponse);
 
         // When
@@ -55,10 +47,9 @@ public class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(registerRequest)));
 
         // Then
-        resultActions.andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("User registered successfully"))
-                .andExpect(jsonPath("$.username").value("username"))
-                .andExpect(jsonPath("$.email").value("thanvanhuyy@gmail.com"));
+        resultActions.
+                andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("User registered successfully"));
 
         verify(authService, times(1)).register(any(RegisterRequest.class));
     }

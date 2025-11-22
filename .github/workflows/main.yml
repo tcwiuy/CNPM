@@ -33,7 +33,7 @@ jobs:
         run: |
           cd ${{ matrix.service }}
           chmod +x mvnw
-          ./mvnw clean package -DskipTests
+          ./mvnw clean package 
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -80,13 +80,6 @@ jobs:
           cd ${{ matrix.service }}
           chmod +x mvnw
           ./mvnw clean package -DskipTests
-
-          # Nếu là restaurant-service thì chạy test
-          if [ "${{ matrix.service }}" = "restaurant-service" ]; then
-            ./mvnw clean test
-          else
-            ./mvnw clean package -DskipTests
-          fi
 
       # Đăng nhập vào Docker Hub bằng chìa khóa bạn đã cất
       - uses: docker/login-action@v3

@@ -1,9 +1,12 @@
 package com.vanhuy.user_service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vanhuy.user_service.controller.AuthController;
 import com.vanhuy.user_service.dto.RegisterRequest;
 import com.vanhuy.user_service.dto.RegisterResponse;
 import com.vanhuy.user_service.service.AuthService;
+import com.vanhuy.user_service.service.PasswordResetService;
+import com.vanhuy.user_service.component.JwtUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -17,31 +20,35 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AuthController.class) // Chỉ load AuthController
+@WebMvcTest(AuthController.class)
 public class AuthControllerTest {
 
-@Autowired
-private MockMvc mockMvc;
+    @Autowired
+    private MockMvc mockMvc;
 
-@Autowired
-private ObjectMapper objectMapper;
+    @Autowired
+    private ObjectMapper objectMapper;
 
-@MockBean
-private AuthService authService; // Mock AuthService
+    @MockBean
+    private AuthService authService;
 
-@Test
-void testRegisterSuccess() throws Exception {
-    // Given
-    RegisterRequest registerRequest = new RegisterRequest("username", "thanvanhuyy@gmail.com", "password");
-    RegisterResponse registerResponse = new RegisterResponse("User registered successfully");
-    when(authService.register(any(RegisterRequest.class))).thenReturn(registerResponse);
+    @MockBean
+    private JwtUtil jwtUtil;
 
-    // When & Then
-    mockMvc.perform(post("/api/v1/auth/register")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(registerRequest)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.message").value("User registered successfully"));
-}
+    @MockBean
+    private PasswordResetService passwordResetService;
 
+    @Test
+    void testRegisterSuccess() throws Exception {
+        RegisterRequest registerRequest = new RegisterRequest("username", "thanvanhuyy@gmail.com", "password");
+        RegisterResponse registerResponse = new RegisterResponse("User registered successfully");
+
+        when(authService.register(any(RegisterRequest.class))).thenReturn(registerResponse);
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("User registered successfully"));
+    }
 }

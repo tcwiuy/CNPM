@@ -34,13 +34,19 @@ public class AuthControllerTest {
     @MockBean
     private AuthService authService;
 
-    
-
     @Test
     void testRegisterSuccess() throws Exception {
         // Given
-        RegisterRequest registerRequest = new RegisterRequest("username", "password", "thanvanhuyy@gmail.com");
-        RegisterResponse registerResponse = new RegisterResponse("User registered successfully");
+        RegisterRequest registerRequest = new RegisterRequest(
+                "username",
+                "thanvanhuyy@gmail.com",
+                "password123");
+
+        RegisterResponse registerResponse = new RegisterResponse();
+        registerResponse.setMessage("User registered successfully");
+        registerResponse.setUsername(registerRequest.getUsername());
+        registerResponse.setEmail(registerRequest.getEmail());
+
         when(authService.register(any(RegisterRequest.class))).thenReturn(registerResponse);
 
         // When
@@ -49,9 +55,10 @@ public class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(registerRequest)));
 
         // Then
-        resultActions.
-                andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("User registered successfully"));
+        resultActions.andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("User registered successfully"))
+                .andExpect(jsonPath("$.username").value("username"))
+                .andExpect(jsonPath("$.email").value("thanvanhuyy@gmail.com"));
 
         verify(authService, times(1)).register(any(RegisterRequest.class));
     }

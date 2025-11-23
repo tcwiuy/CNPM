@@ -40,6 +40,7 @@ public class AuthControllerTest {
     @MockBean
     private PasswordResetService passwordResetService;
 
+    // Unit test for register endpoint
     @Test
     void testRegisterSuccess() throws Exception {
         RegisterRequest registerRequest = new RegisterRequest("username", "thanvanhuyy@gmail.com", "password");

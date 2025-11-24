@@ -83,6 +83,13 @@ CREATE TABLE notifications (
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
 );
 
+-- Create user if not exists (Docker may have already created it via MYSQL_USER)
 CREATE USER IF NOT EXISTS 'kyvy'@'%' IDENTIFIED BY '2407';
-GRANT ALL PRIVILEGES ON *.* TO 'kyvy'@'%';
+
+-- Grant all privileges on all databases 
+-- (Docker automatically grants privileges on MYSQL_DATABASE only, 
+--  but we need privileges on all databases for microservices)
+GRANT ALL PRIVILEGES ON *.* TO 'kyvy'@'%' WITH GRANT OPTION;
+
+-- Apply privilege changes immediately
 FLUSH PRIVILEGES;

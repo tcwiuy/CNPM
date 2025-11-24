@@ -17,6 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -59,7 +60,7 @@ class UserControllerIntegrationTest {
         testUser.setEmail("test@example.com");
         testUser.setPassword(passwordEncoder.encode("password123"));
         testUser.setActive(true);
-        testUser.setRoles(Set.of(Role.ROLE_USER.name()));
+        testUser.setRoles(new HashSet<>(Set.of(Role.ROLE_USER.name())));
         testUser.setAddress("Test Address");
         testUser = userRepository.save(testUser);
         userToken = jwtUtil.generateToken(testUser);
@@ -70,7 +71,7 @@ class UserControllerIntegrationTest {
         adminUser.setEmail("admin@example.com");
         adminUser.setPassword(passwordEncoder.encode("password123"));
         adminUser.setActive(true);
-        adminUser.setRoles(Set.of(Role.ROLE_ADMIN.name()));
+        adminUser.setRoles(new HashSet<>(Set.of(Role.ROLE_ADMIN.name())));
         adminUser = userRepository.save(adminUser);
         adminToken = jwtUtil.generateToken(adminUser);
     }
@@ -143,7 +144,7 @@ class UserControllerIntegrationTest {
         newUserDTO.setEmail("newuser@example.com");
         newUserDTO.setPassword("password123");
         newUserDTO.setActive(true);
-        newUserDTO.setRoles(Set.of(Role.ROLE_USER.name()));
+        newUserDTO.setRoles(new HashSet<>(Set.of(Role.ROLE_USER.name())));
 
         // When & Then
         mockMvc.perform(post("/api/v1/users")
@@ -223,7 +224,7 @@ class UserControllerIntegrationTest {
         userToDelete.setEmail("todelete@example.com");
         userToDelete.setPassword(passwordEncoder.encode("password123"));
         userToDelete.setActive(true);
-        userToDelete.setRoles(Set.of(Role.ROLE_USER.name()));
+        userToDelete.setRoles(new HashSet<>(Set.of(Role.ROLE_USER.name())));
         userToDelete = userRepository.save(userToDelete);
 
         // When & Then
@@ -259,8 +260,14 @@ class UserControllerIntegrationTest {
     @Test
     void testReactivateUser_AsAdmin_Success() throws Exception {
         // Given - Deactivate user first
-        testUser.setActive(false);
-        userRepository.save(testUser);
+        User userToDeactivate = userRepository.findById(testUser.getUserId()).orElse(null);
+        assertNotNull(userToDeactivate);
+        userToDeactivate.setActive(false);
+        // Ensure roles is mutable
+        if (userToDeactivate.getRoles() != null) {
+            userToDeactivate.setRoles(new HashSet<>(userToDeactivate.getRoles()));
+        }
+        userRepository.save(userToDeactivate);
 
         // When & Then
         mockMvc.perform(post("/api/v1/users/{id}/reactivate", testUser.getUserId())
@@ -282,7 +289,7 @@ class UserControllerIntegrationTest {
         inactiveUser.setEmail("inactive@example.com");
         inactiveUser.setPassword(passwordEncoder.encode("password123"));
         inactiveUser.setActive(false);
-        inactiveUser.setRoles(Set.of(Role.ROLE_USER.name()));
+        inactiveUser.setRoles(new HashSet<>(Set.of(Role.ROLE_USER.name())));
         userRepository.save(inactiveUser);
 
         // When & Then - Get all users including inactive

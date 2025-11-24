@@ -21,6 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -90,7 +91,7 @@ class AuthControllerIntegrationTest {
         existingUser.setEmail("existing@example.com");
         existingUser.setPassword(passwordEncoder.encode("password123"));
         existingUser.setActive(true);
-        existingUser.setRoles(Set.of(Role.ROLE_USER.name()));
+        existingUser.setRoles(new HashSet<>(Set.of(Role.ROLE_USER.name())));
         userRepository.save(existingUser);
 
         RegisterRequest registerRequest = new RegisterRequest(
@@ -114,7 +115,7 @@ class AuthControllerIntegrationTest {
         existingUser.setEmail("existing@example.com");
         existingUser.setPassword(passwordEncoder.encode("password123"));
         existingUser.setActive(true);
-        existingUser.setRoles(Set.of(Role.ROLE_USER.name()));
+        existingUser.setRoles(new HashSet<>(Set.of(Role.ROLE_USER.name())));
         userRepository.save(existingUser);
 
         RegisterRequest registerRequest = new RegisterRequest(
@@ -170,7 +171,7 @@ class AuthControllerIntegrationTest {
         user.setEmail("login@example.com");
         user.setPassword(passwordEncoder.encode("password123"));
         user.setActive(true);
-        user.setRoles(Set.of(Role.ROLE_USER.name()));
+        user.setRoles(new HashSet<>(Set.of(Role.ROLE_USER.name())));
         userRepository.save(user);
 
         LoginRequest loginRequest = new LoginRequest("loginuser", "password123");
@@ -192,7 +193,7 @@ class AuthControllerIntegrationTest {
         user.setEmail("login@example.com");
         user.setPassword(passwordEncoder.encode("password123"));
         user.setActive(true);
-        user.setRoles(Set.of(Role.ROLE_USER.name()));
+        user.setRoles(new HashSet<>(Set.of(Role.ROLE_USER.name())));
         userRepository.save(user);
 
         LoginRequest loginRequest = new LoginRequest("loginuser", "wrongpassword");
@@ -224,7 +225,7 @@ class AuthControllerIntegrationTest {
         user.setEmail("inactive@example.com");
         user.setPassword(passwordEncoder.encode("password123"));
         user.setActive(false);
-        user.setRoles(Set.of(Role.ROLE_USER.name()));
+        user.setRoles(new HashSet<>(Set.of(Role.ROLE_USER.name())));
         userRepository.save(user);
 
         LoginRequest loginRequest = new LoginRequest("inactiveuser", "password123");
@@ -244,7 +245,7 @@ class AuthControllerIntegrationTest {
         user.setEmail("token@example.com");
         user.setPassword(passwordEncoder.encode("password123"));
         user.setActive(true);
-        user.setRoles(Set.of(Role.ROLE_USER.name()));
+        user.setRoles(new HashSet<>(Set.of(Role.ROLE_USER.name())));
         userRepository.save(user);
 
         // Login to get token

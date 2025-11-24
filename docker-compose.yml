@@ -21,7 +21,7 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    redis:
+  redis:
     image: redis:alpine
     ports:
       - "6379:6379"
@@ -48,6 +48,8 @@ services:
 
   # --- MICROSERVICES ---
   user-service:
+    ports:
+      - "8081:8081"
     image: tcwiuy/user-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
@@ -57,6 +59,8 @@ services:
       - ./user-service/src/main/resources/uploads:/app/uploads
 
   restaurant-service:
+    ports:
+      - "8082:8082"
     image: tcwiuy/restaurant-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
@@ -66,6 +70,8 @@ services:
       - ./restaurant-service/src/main/resources/uploads:/app/uploads
 
   order-service:
+    ports:
+      - "8083:8083"
     image: tcwiuy/order-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/

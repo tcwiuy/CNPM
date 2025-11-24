@@ -78,6 +78,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Pull base image một lần để cache và tránh rate limit
+      - name: Pull base image
+        run: |
+          docker pull eclipse-temurin:21-jdk-alpine || true
+
       # Cần cài lại Java để build file .jar (vì mỗi job chạy trên máy mới tinh)
       - uses: actions/setup-java@v4
         with:

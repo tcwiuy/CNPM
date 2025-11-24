@@ -21,6 +21,13 @@ import java.io.IOException;
 public class JwtRequestFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
+    
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/actuator/");
+    }
+    
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,

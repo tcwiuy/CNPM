@@ -79,6 +79,8 @@ services:
       - eureka-service
 
   notification-service:
+    ports:
+      - "8084:8084"
     image: tcwiuy/notification-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/

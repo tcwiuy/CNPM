@@ -5,6 +5,7 @@ import com.vanhuy.user_service.component.JwtUtil;
 import com.vanhuy.user_service.dto.*;
 import com.vanhuy.user_service.exception.AuthException;
 import com.vanhuy.user_service.exception.UserNotFoundException;
+import com.vanhuy.user_service.exception.ValidationException;
 import com.vanhuy.user_service.model.Role;
 import com.vanhuy.user_service.model.User;
 import com.vanhuy.user_service.repository.UserRepository;
@@ -68,10 +69,10 @@ public class AuthService {
 
     private void validateNewUserCredentials(RegisterRequest registerRequest) {
         if (userRepository.findByUsernameAndIsActiveTrue(registerRequest.getUsername()).isPresent()) {
-            throw new AuthException("Username is already taken");
+            throw new ValidationException("Username is already taken");
         }
         if (userRepository.findByEmailAndIsActiveTrue(registerRequest.getEmail()).isPresent()) {
-            throw new AuthException("Email is already in use");
+            throw new ValidationException("Email is already in use");
         }
     }
 

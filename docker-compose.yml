@@ -144,12 +144,12 @@ services:
       - prometheus
   
   mysql:
-    image: mysql:8.0
+    image: mysql/mysql:8.0
     container_name: mysql
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD: 2407
       MYSQL_USER: root
       MYSQL_PASSWORD: 2407
     volumes:

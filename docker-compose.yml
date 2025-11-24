@@ -150,15 +150,12 @@ services:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_USER: user
-      MYSQL_PASSWORD: userpassword
-      volumes:
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 2407
+    volumes:
         - mysql-data:/var/lib/mysql
         - ./mysql-init:/docker-entrypoint-initdb.d
-      restart: unless-stopped
-
-    volumes:
-      - mysql-data:/var/lib/mysql
+    restart: unless-stopped
 
 volumes:
   grafana-data:

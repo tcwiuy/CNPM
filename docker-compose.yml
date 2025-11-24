@@ -26,7 +26,7 @@ services:
     ports:
       - "6379:6379"
 
-  # --- DISCOVERY SERVER ---
+  # --- DISCOVERY SERVER --- 
   eureka-service:
     image: tcwiuy/eureka-service:latest
     ports:
@@ -104,7 +104,7 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
     ports:
-      - "9090:9090"
+      - "9091:9090"
     depends_on:
       - api-gateway
       - user-service
@@ -120,7 +120,7 @@ services:
     command:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
     ports:
-      - "9093:9093"
+      - "9099:9093"
     depends_on:
       - prometheus
 
@@ -128,7 +128,7 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "3000:3000"
+      - "3030:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin

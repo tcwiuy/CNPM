@@ -10,11 +10,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: prometheus,health,info,metrics
+        include: health,info,prometheus
   endpoint:
     prometheus:
       enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
+  server:
+    port: 8081
+  security:
+    enabled: false   # nếu Spring Boot 3, dùng security.authorization.enabled: false

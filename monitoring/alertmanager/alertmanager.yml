@@ -7,4 +7,4 @@ route:
 receivers:
   - name: "default"
     webhook_configs:
-      - url: "http://prometheus:9090"
+      - url: "http://host.docker.internal:5001"   # endpoint test

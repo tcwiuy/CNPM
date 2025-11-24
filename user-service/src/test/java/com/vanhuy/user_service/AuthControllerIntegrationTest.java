@@ -108,7 +108,7 @@ class AuthControllerIntegrationTest {
 
     @Test
     void testRegister_DuplicateEmail() throws Exception {
-        // Given - Create existing user
+        // Given Create existing user
         User existingUser = new User();
         existingUser.setUsername("user1");
         existingUser.setEmail("existing@example.com");

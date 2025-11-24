@@ -82,6 +82,9 @@ services:
       - eureka-service
 
   notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
     ports:
       - "8084:8084"
     image: tcwiuy/notification-service:latest

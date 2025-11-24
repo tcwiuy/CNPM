@@ -13,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
 import java.util.Set;
 
 @Service
@@ -68,7 +67,7 @@ public class UserService {
         User user = userMapper.toEntity(userDTO);
         user.setActive(true);
         if (user.getRoles() == null || user.getRoles().isEmpty()) {
-            user.setRoles(new HashSet<>(Set.of("ROLE_USER")));
+            user.setRoles(Set.of("ROLE_USER"));
         }
 
         User savedUser = userRepository.save(user);
@@ -97,7 +96,7 @@ public class UserService {
         user.setAddress(dto.getAddress());
         user.setProfileImageName(dto.getProfileImageName());
         if (dto.getRoles() != null && !dto.getRoles().isEmpty()) {
-            user.setRoles(new HashSet<>(dto.getRoles()));
+            user.setRoles(dto.getRoles());
         }
         if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(dto.getPassword()));
@@ -110,10 +109,6 @@ public class UserService {
     public void deactivateUser(Integer id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
-        // Ensure roles is mutable HashSet to avoid UnsupportedOperationException
-        if (user.getRoles() != null) {
-            user.setRoles(new HashSet<>(user.getRoles()));
-        }
         user.setActive(false);
         userRepository.save(user);
     }
@@ -121,10 +116,6 @@ public class UserService {
     public UserDTO reactivateUser(Integer id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
-        // Ensure roles is mutable HashSet to avoid UnsupportedOperationException
-        if (user.getRoles() != null) {
-            user.setRoles(new HashSet<>(user.getRoles()));
-        }
         user.setActive(true);
         User reactivatedUser = userRepository.save(user);
         return userMapper.toUserDTO(reactivatedUser);

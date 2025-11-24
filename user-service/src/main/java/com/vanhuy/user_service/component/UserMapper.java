@@ -6,8 +6,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
-
 @Component
 @RequiredArgsConstructor
 public class UserMapper {
@@ -32,9 +30,7 @@ public class UserMapper {
         user.setEmail(userDTO.getEmail());
         user.setAddress(userDTO.getAddress());
         user.setProfileImageName(userDTO.getProfileImageName());
-        if (userDTO.getRoles() != null) {
-            user.setRoles(new HashSet<>(userDTO.getRoles()));
-        }
+        user.setRoles(userDTO.getRoles());
         user.setActive(userDTO.isActive());
         if (userDTO.getPassword() != null) {
             user.setPassword(passwordEncoder.encode(userDTO.getPassword()));

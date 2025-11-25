@@ -3,7 +3,12 @@ FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
 WORKDIR /app
 COPY . .
 # Lệnh này sẽ tự tải thư viện và đóng gói thành file .jar ngay trong Docker
-RUN mvn clean package -DskipTests
+# Thêm retry mechanism để xử lý lỗi tạm thời từ Maven Central (500 error)
+# -U: force update dependencies
+# --fail-at-end: tiếp tục build các module khác nếu một module fail
+RUN mvn clean package -DskipTests -U --fail-at-end || \
+    (echo "First attempt failed, retrying in 10 seconds..." && sleep 10 && mvn clean package -DskipTests -U --fail-at-end) || \
+    (echo "Second attempt failed, retrying in 15 seconds..." && sleep 15 && mvn clean package -DskipTests -U --fail-at-end)
 
 # --- Giai đoạn 2: Chạy ứng dụng (Dùng image Java nhẹ) ---
 FROM eclipse-temurin:21-jdk-alpine

@@ -1,4 +1,4 @@
 export const environment = {
     production: true,
-    baseUrl: 'http://20.205.6.4:9000/api/v1' // Change this to your production URL when deploying
+  baseUrl: 'http://localhost:9000/api/v1' // Use host URL when frontend served to browser via docker-compose
   };

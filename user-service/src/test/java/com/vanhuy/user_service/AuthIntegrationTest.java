@@ -32,7 +32,7 @@ public class AuthIntegrationTest {
 
     @Test
     void testRegisterIntegration() throws Exception {
-        // integration test for register endpoint.
+        // integration test for register endpoint...
         RegisterRequest registerRequest = new RegisterRequest(
                 "testuser",
                 "test@example.com",

@@ -1,0 +1,11 @@
+groups:
+  - name: microservice-down
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service Down"
+          description: "Service {{ $labels.instance }} is DOWN"

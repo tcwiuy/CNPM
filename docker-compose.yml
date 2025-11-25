@@ -9,7 +9,7 @@ services:
       - "22181:2181"
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.5.0
     depends_on:
       - zookeeper
     ports:
@@ -21,12 +21,12 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    redis:
+  redis:
     image: redis:alpine
     ports:
       - "6379:6379"
 
-  # --- DISCOVERY SERVER ---
+  # --- DISCOVERY SERVER --- 
   eureka-service:
     image: tcwiuy/eureka-service:latest
     ports:
@@ -48,36 +48,51 @@ services:
 
   # --- MICROSERVICES ---
   user-service:
+    ports:
+      - "8081:8081"
     image: tcwiuy/user-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
     depends_on:
+      - mysql
       - eureka-service
     volumes:
       - ./user-service/src/main/resources/uploads:/app/uploads
 
   restaurant-service:
+    ports:
+      - "8082:8082"
     image: tcwiuy/restaurant-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
     depends_on:
+      - mysql
       - eureka-service
     volumes:
       - ./restaurant-service/src/main/resources/uploads:/app/uploads
 
   order-service:
+    ports:
+      - "8083:8083"
     image: tcwiuy/order-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
     depends_on:
+      - mysql
       - eureka-service
 
   notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
     image: tcwiuy/notification-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
+      - mysql
       - eureka-service
       - kafka
 
@@ -88,3 +103,63 @@ services:
       - "80:80"
     depends_on:
       - api-gateway
+
+    # --- MONITORING STACK ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api-gateway
+      - user-service
+      - restaurant-service
+      - order-service
+      - notification-service
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    ports:
+      - "9093:9093"
+    depends_on:
+      - prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+  
+  mysql:
+    image: mysql:8.0.36
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 2407
+      MYSQL_USER: kyvy             
+      MYSQL_PASSWORD: 2407
+    volumes:
+        - mysql-data:/var/lib/mysql
+        - ./mysql-init:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+volumes:
+  grafana-data:
+  mysql-data:

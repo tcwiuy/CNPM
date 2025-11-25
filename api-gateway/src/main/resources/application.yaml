@@ -91,10 +91,20 @@ management:
   endpoints:
     web:
       exposure:
-        include: '*' # Đã bao gồm 'prometheus'
+        include: prometheus,health,info,metrics
   endpoint:
+    prometheus:
+      enabled: true
     health:
       show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
   health:
     circuitbreakers:
       enabled: true
+
+logging:
+  level:
+    root: INFO

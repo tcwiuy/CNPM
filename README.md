@@ -262,4 +262,4 @@ CNPM/
 
 - Khi chạy local development, đảm bảo tất cả infrastructure services (MySQL, Kafka, Redis) đã được khởi động
 - Để build Docker images riêng, xem Dockerfile trong mỗi service directory
-- Xem file `SECRETS_SETUP.md` để biết cách setup CI/CD secrets
+- Xem file `SECRETS_SETUP.md` để biết cách setup CI/CD secrets.

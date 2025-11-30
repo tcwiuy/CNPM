@@ -53,6 +53,9 @@ services:
     image: tcwiuy/user-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/user_db
+      - SPRING_DATASOURCE_USERNAME=kyvy
+      - SPRING_DATASOURCE_PASSWORD=2407
     depends_on:
       - mysql
       - eureka-service
@@ -65,6 +68,10 @@ services:
     image: tcwiuy/restaurant-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - APP_BASE_URL=http://localhost:9000
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/restaurant_db
+      - SPRING_DATASOURCE_USERNAME=kyvy
+      - SPRING_DATASOURCE_PASSWORD=2407
     depends_on:
       - mysql
       - eureka-service
@@ -77,6 +84,9 @@ services:
     image: tcwiuy/order-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/order_db
+      - SPRING_DATASOURCE_USERNAME=kyvy
+      - SPRING_DATASOURCE_PASSWORD=2407
     depends_on:
       - mysql
       - eureka-service
@@ -91,6 +101,9 @@ services:
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/notification_db
+      - SPRING_DATASOURCE_USERNAME=kyvy
+      - SPRING_DATASOURCE_PASSWORD=2407
     depends_on:
       - mysql
       - eureka-service

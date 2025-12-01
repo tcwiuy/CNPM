@@ -81,7 +81,7 @@ services:
 
   restaurant-service:
     ports:
-      - "9000:8082"
+      - "8082:8082"
     image: tcwiuy/restaurant-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/

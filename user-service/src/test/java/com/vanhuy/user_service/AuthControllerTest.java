@@ -5,7 +5,6 @@ import com.vanhuy.user_service.controller.AuthController;
 import com.vanhuy.user_service.dto.RegisterRequest;
 import com.vanhuy.user_service.dto.RegisterResponse;
 import com.vanhuy.user_service.service.AuthService;
-import com.vanhuy.user_service.service.PasswordResetService;
 import com.vanhuy.user_service.component.JwtUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +13,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -53,6 +55,23 @@ public class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("User registered successfully"));
+    }
+
+    @Test
+    void testLoginSuccess() throws Exception {
+        String username = "username";
+        String password = "password";
+        String token = "mocked-jwt-token";
+
+        UserDetails userDetails = new User(username, password, Collections.emptyList());
+
+        when(jwtUtil.generateToken(userDetails)).thenReturn(token);
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"" + username + "\", \"password\":\"" + password + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value(token));
     }
 
 }

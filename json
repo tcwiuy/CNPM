@@ -1,0 +1,83 @@
+const restaurants = [
+  {
+    name: "Nhà hàng A",
+    address: "Hà Nội",
+    phone: "0123456789",
+    category: "Fast Food",
+    menuItems: [
+      { name: "Burger", price: 50000 },
+      { name: "Fries", price: 20000 }
+    ]
+  },
+  {
+    name: "Nhà hàng B",
+    address: "Hải Phòng",
+    phone: "0987654321",
+    category: "BBQ",
+    menuItems: [
+      { name: "Grilled Chicken", price: 80000 },
+      { name: "Grilled Beef", price: 120000 }
+    ]
+  },
+  {
+    name: "Nhà hàng C",
+    address: "Đà Nẵng",
+    phone: "0911223344",
+    category: "Seafood",
+    menuItems: [
+      { name: "Fried Shrimp", price: 90000 },
+      { name: "Grilled Fish", price: 110000 }
+    ]
+  },
+  {
+    name: "Nhà hàng D",
+    address: "HCM",
+    phone: "0909090909",
+    category: "Vegan",
+    menuItems: [
+      { name: "Salad Bowl", price: 45000 },
+      { name: "Veggie Soup", price: 30000 }
+    ]
+  },
+  {
+    name: "Nhà hàng E",
+    address: "Cần Thơ",
+    phone: "0933333333",
+    category: "Dessert",
+    menuItems: [
+      { name: "Cheesecake", price: 40000 },
+      { name: "Ice Cream", price: 35000 }
+    ]
+  }
+];
+
+restaurants.forEach(r => {
+  // Thêm nhà hàng
+  fetch("http://20.205.6.4:9000/api/v1/restaurants", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: r.name,
+      address: r.address,
+      phone: r.phone,
+      category: r.category
+    })
+  })
+  .then(res => res.json())
+  .then(restaurant => {
+    console.log("Added restaurant:", restaurant);
+
+    // Thêm menu items cho nhà hàng
+    r.menuItems.forEach(item => {
+      fetch(`http://20.205.6.4:9000/api/v1/restaurants/${restaurant.id}/menu-items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(item)
+      })
+      .then(res => res.json())
+      .then(menu => console.log("Added menu item:", menu))
+      .catch(console.error);
+    });
+  })
+  .catch(console.error);
+});

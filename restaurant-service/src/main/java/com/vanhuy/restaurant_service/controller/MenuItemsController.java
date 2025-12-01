@@ -21,13 +21,15 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/menu-items")
-public class MenuItemController {
+@CrossOrigin(origins = "*") // Bật CORS cho tất cả phương thức
+public class MenuItemsController {
+
     private final MenuItemService menuItemService;
     private final RestaurantService restaurantService;
     private final FileStorageService imageService;
 
-    @CrossOrigin(origins = "*") // Thêm dòng này để cho phép gọi từ trình duyệt
-    @PostMapping("/{restaurantId}")
+    // POST menu item theo restaurantId
+    @PostMapping("/restaurant/{restaurantId}")
     public ResponseEntity<MenuItemDTO> createMenuItem(
             @PathVariable Integer restaurantId,
             @RequestBody MenuItemDTO menuItemDTO) {
@@ -35,6 +37,7 @@ public class MenuItemController {
         return ResponseEntity.ok(createdMenuItem);
     }
 
+    // GET tất cả menu items theo restaurantId
     @GetMapping("/restaurant/{restaurantId}")
     public ResponseEntity<List<MenuItemDTO>> getMenuItemsByRestaurantId(@PathVariable Integer restaurantId) {
         Restaurant restaurant = restaurantService.getRestaurantById(restaurantId);
@@ -45,6 +48,7 @@ public class MenuItemController {
         return ResponseEntity.ok(menuItems);
     }
 
+    // POST upload image cho menu item
     @PostMapping(value = "/{menuItemId}/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MenuItemDTO> uploadImage(
             @PathVariable Integer menuItemId,
@@ -55,22 +59,22 @@ public class MenuItemController {
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         } catch (IOException e) {
-            // log.error("Error uploading image for menu item {}", menuItemId, e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
+    // GET ảnh menu item
     @GetMapping("/images/{filename:.+}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) {
         Resource resource = imageService.getImage(filename);
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_JPEG)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
-                .header(HttpHeaders.CACHE_CONTROL, "max-age=31536000") // Cache for 1 year
+                .header(HttpHeaders.CACHE_CONTROL, "max-age=31536000")
                 .body(resource);
     }
 
-    // get price by menu item id
+    // GET giá theo menu item id
     @GetMapping("/{menuItemId}")
     public ResponseEntity<BigDecimal> getPriceByMenuItemId(@PathVariable Integer menuItemId) {
         BigDecimal price = menuItemService.getPriceByMenuItemId(menuItemId);

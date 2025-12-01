@@ -56,6 +56,9 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/user_db
       - SPRING_DATASOURCE_USERNAME=kyvy
       - SPRING_DATASOURCE_PASSWORD=2407
+      - APP_BASE_URL=http://api-gateway:9000
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
+      - EUREKA_INSTANCE_HOSTNAME=user-service
     depends_on:
       - mysql
       - eureka-service
@@ -68,10 +71,12 @@ services:
     image: tcwiuy/restaurant-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
-      - APP_BASE_URL=http://localhost:9000
+      - APP_BASE_URL=http://api-gateway:9000
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/restaurant_db
       - SPRING_DATASOURCE_USERNAME=kyvy
       - SPRING_DATASOURCE_PASSWORD=2407
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
+      - EUREKA_INSTANCE_HOSTNAME=restaurant-service
     depends_on:
       - mysql
       - eureka-service
@@ -87,6 +92,9 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/order_db
       - SPRING_DATASOURCE_USERNAME=kyvy
       - SPRING_DATASOURCE_PASSWORD=2407
+      - APP_BASE_URL=http://api-gateway:9000
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
+      - EUREKA_INSTANCE_HOSTNAME=order-service
     depends_on:
       - mysql
       - eureka-service
@@ -104,6 +112,9 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/notification_db
       - SPRING_DATASOURCE_USERNAME=kyvy
       - SPRING_DATASOURCE_PASSWORD=2407
+      - APP_BASE_URL=http://api-gateway:9000
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
+      - EUREKA_INSTANCE_HOSTNAME=notification-service
     depends_on:
       - mysql
       - eureka-service

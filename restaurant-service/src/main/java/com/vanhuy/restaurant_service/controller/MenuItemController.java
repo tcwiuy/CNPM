@@ -26,9 +26,12 @@ public class MenuItemController {
     private final RestaurantService restaurantService;
     private final FileStorageService imageService;
 
+    @CrossOrigin(origins = "*") // Thêm dòng này để cho phép gọi từ trình duyệt
     @PostMapping("/{restaurantId}")
-    public ResponseEntity<MenuItemDTO> createMenuItem(@PathVariable Integer restaurantId, @RequestBody MenuItemDTO menuItemDTO) {
-        MenuItemDTO createdMenuItem = menuItemService.createMenuItem(menuItemDTO ,restaurantId);
+    public ResponseEntity<MenuItemDTO> createMenuItem(
+            @PathVariable Integer restaurantId,
+            @RequestBody MenuItemDTO menuItemDTO) {
+        MenuItemDTO createdMenuItem = menuItemService.createMenuItem(menuItemDTO, restaurantId);
         return ResponseEntity.ok(createdMenuItem);
     }
 

@@ -18,3 +18,8 @@ management:
     export:
       prometheus:
         enabled: true
+spring:
+  datasource:
+    url: jdbc:mysql://mysql:3306/restaurant_db
+    username: kyvy
+    password: 2407

@@ -112,6 +112,8 @@ services:
   # --- FRONTEND ---
   frontend:
     image: tcwiuy/food-ordering-frontend:latest
+    environment:
+    - REACT_APP_API_URL=http://api-gateway:9000
     ports:
       - "80:80"
     depends_on:

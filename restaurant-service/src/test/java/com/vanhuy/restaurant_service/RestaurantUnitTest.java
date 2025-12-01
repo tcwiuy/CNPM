@@ -8,8 +8,9 @@ import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+// Unit test cho lớp model, không liên quan đến controller hay service.
 public class RestaurantUnitTest {
-
+    
     @Test
     void restaurantBuilderSetsFields() {
         Restaurant r = Restaurant.builder()

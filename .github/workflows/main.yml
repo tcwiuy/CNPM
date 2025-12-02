@@ -35,7 +35,7 @@ jobs:
           chmod +x mvnw
           ./mvnw clean package 
           ./mvnw clean package | tee build.log        # 👈 ADDED
-      
+
       # --- SEND BUILD LOGS TO LOKI CHUNKED ---
       - name: Send build logs to Loki
         run: |
@@ -44,19 +44,11 @@ jobs:
           TOTAL_LINES=$(wc -l < "$FILE")
           for START in $(seq 1 $CHUNK $TOTAL_LINES); do
             END=$((START + CHUNK - 1))
-            LOG=$(sed -n "${START},${END}p" "$FILE" | jq -R -s '.')
-            curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"streams\": [{
-                  \"stream\": {
-                    \"job\": \"ci\",
-                    \"service\": \"${{ matrix.service }}\",
-                    \"stage\": \"build\"
-                  },
-                  \"values\": [[\"$(date +%s%N)\", $LOG]]
-                }]
-              }"
+            sed -n "${START},${END}p" "$FILE" \
+              | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "build" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage}, values: [[$ts, .]]}]}
+              ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done
 
   # ==========================================
@@ -75,7 +67,7 @@ jobs:
           cd frontend
           npm install
           npm run build | tee build.log             # 👈 ADDED
-      
+
       # --- SEND FRONTEND BUILD LOGS TO LOKI CHUNKED ---
       - name: Send FE build logs to Loki
         run: |
@@ -84,21 +76,12 @@ jobs:
           TOTAL_LINES=$(wc -l < "$FILE")
           for START in $(seq 1 $CHUNK $TOTAL_LINES); do
             END=$((START + CHUNK - 1))
-            LOG=$(sed -n "${START},${END}p" "$FILE" | jq -R -s '.')
-            curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"streams\": [{
-                  \"stream\": {
-                    \"job\": \"ci\",
-                    \"service\": \"frontend\",
-                    \"stage\": \"build\"
-                  },
-                  \"values\": [[\"$(date +%s%N)\", $LOG]]
-                }]
-              }"
-          done                                   # 👈 ADDED
-
+            sed -n "${START},${END}p" "$FILE" \
+              | jq -R -s --arg job "ci" --arg service "frontend" --arg stage "build" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage}, values: [[$ts, .]]}]}
+              ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+          done
 
   # --- PHẦN 3: ĐÓNG GÓI & VẬN CHUYỂN (CD) ---
 
@@ -131,7 +114,7 @@ jobs:
           cd ${{ matrix.service }}
           chmod +x mvnw
           ./mvnw clean package -DskipTests | tee cd.log     # 👈 ADDED
-      
+
       # --- SEND CD LOGS TO LOKI CHUNKED ---
       - name: Send CD build logs to Loki
         run: |
@@ -140,22 +123,13 @@ jobs:
           TOTAL_LINES=$(wc -l < "$FILE")
           for START in $(seq 1 $CHUNK $TOTAL_LINES); do
             END=$((START + CHUNK - 1))
-            LOG=$(sed -n "${START},${END}p" "$FILE" | jq -R -s '.')
-            curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"streams\": [{
-                  \"stream\": {
-                    \"job\": \"cd\",
-                    \"service\": \"${{ matrix.service }}\",
-                    \"stage\": \"docker-build\"
-                  },
-                  \"values\": [[\"$(date +%s%N)\", $LOG]]
-                }]
-              }"
-          done                                       # 👈 ADDED
+            sed -n "${START},${END}p" "$FILE" \
+              | jq -R -s --arg job "cd" --arg service "${{ matrix.service }}" --arg stage "docker-build" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage}, values: [[$ts, .]]}]}
+              ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+          done
 
-          
       # Đăng nhập vào Docker Hub bằng chìa khóa bạn đã cất
       - uses: docker/login-action@v3
         with:
@@ -171,7 +145,6 @@ jobs:
           push: true
           # Đặt tên thẻ bài: ten-user/ten-service:latest
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
-
 
   # ==========================================
   # 4. CD - DOCKER FRONTEND
@@ -217,7 +190,7 @@ jobs:
             sudo docker-compose pull
             sudo docker-compose up -d
             sudo docker image prune -f
-      
+
       # --- SEND DEPLOY LOGS TO LOKI CHUNKED ---
       - name: Send Deploy Logs to Loki
         run: |
@@ -226,16 +199,9 @@ jobs:
           TOTAL_LINES=$(wc -l < "$FILE")
           for START in $(seq 1 $CHUNK $TOTAL_LINES); do
             END=$((START + CHUNK - 1))
-            LOG=$(sed -n "${START},${END}p" "$FILE" | jq -R -s '.')
-            curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"streams\": [{
-                  \"stream\": {
-                    \"job\": \"cd\",
-                    \"stage\": \"deploy\"
-                  },
-                  \"values\": [[\"$(date +%s%N)\", $LOG]]
-                }]
-              }"
-          done                                           # 👈 ADDED
+            sed -n "${START},${END}p" "$FILE" \
+              | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "deploy" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage}, values: [[$ts, .]]}]}
+              ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+          done

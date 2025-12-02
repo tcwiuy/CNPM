@@ -195,6 +195,11 @@ jobs:
       - name: Send Deploy Logs to Loki
         run: |
           FILE="deploy.log"
+          # If the deploy log doesn't exist or is empty, skip upload to avoid failing the job
+          if [ ! -f "$FILE" ] || [ ! -s "$FILE" ]; then
+            echo "File $FILE not found or empty, skipping Loki upload"
+            exit 0
+          fi
           CHUNK=5000
           TOTAL_LINES=$(wc -l < "$FILE")
           for START in $(seq 1 $CHUNK $TOTAL_LINES); do

@@ -1,7 +1,5 @@
 package com.vanhuy.user_service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -17,10 +15,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import org.junit.jupiter.api.Test;
 
 class UserServiceApplicationTests {
 
@@ -43,7 +43,7 @@ class UserServiceApplicationTests {
 
 		int port = server.getAddress().getPort();
 
-		// Configure load test parameters (kept modest for CI speed)
+		// Configure load test parameters (kept modest for CI speed)....
 		final int totalRequests = 200;
 		final int concurrency = 40;
 

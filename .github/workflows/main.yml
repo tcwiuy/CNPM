@@ -36,21 +36,28 @@ jobs:
           ./mvnw clean package 
           ./mvnw clean package | tee build.log        # 👈 ADDED
       
+      # --- SEND BUILD LOGS TO LOKI CHUNKED ---
       - name: Send build logs to Loki
         run: |
-          cat ${{ matrix.service }}/build.log | jq -R -s '.' | \
-          curl -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"streams\": [{
-                \"stream\": {
-                  \"job\": \"ci\",
-                  \"service\": \"${{ matrix.service }}\",
-                  \"stage\": \"build\"
-                },
-                \"values\": [[\"$(date +%s%N)\", $(cat ${{ matrix.service }}/build.log | jq -R -s '.')]]
-              }]
-            }"                                   # 👈 ADDED
+          FILE="${{ matrix.service }}/build.log"
+          CHUNK=5000
+          TOTAL_LINES=$(wc -l < "$FILE")
+          for START in $(seq 1 $CHUNK $TOTAL_LINES); do
+            END=$((START + CHUNK - 1))
+            LOG=$(sed -n "${START},${END}p" "$FILE" | jq -R -s '.')
+            curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"streams\": [{
+                  \"stream\": {
+                    \"job\": \"ci\",
+                    \"service\": \"${{ matrix.service }}\",
+                    \"stage\": \"build\"
+                  },
+                  \"values\": [[\"$(date +%s%N)\", $LOG]]
+                }]
+              }"
+          done
 
   # ==========================================
   # 2. CI - BUILD FRONTEND
@@ -69,21 +76,28 @@ jobs:
           npm install
           npm run build | tee build.log             # 👈 ADDED
       
+      # --- SEND FRONTEND BUILD LOGS TO LOKI CHUNKED ---
       - name: Send FE build logs to Loki
         run: |
-          cat frontend/build.log | jq -R -s '.' | \
-          curl -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"streams\": [{
-                \"stream\": {
-                  \"job\": \"ci\",
-                  \"service\": \"frontend\",
-                  \"stage\": \"build\"
-                },
-                \"values\": [[\"$(date +%s%N)\", $(cat frontend/build.log | jq -R -s '.')]]
-              }]
-            }"                                   # 👈 ADDED
+          FILE="frontend/build.log"
+          CHUNK=5000
+          TOTAL_LINES=$(wc -l < "$FILE")
+          for START in $(seq 1 $CHUNK $TOTAL_LINES); do
+            END=$((START + CHUNK - 1))
+            LOG=$(sed -n "${START},${END}p" "$FILE" | jq -R -s '.')
+            curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"streams\": [{
+                  \"stream\": {
+                    \"job\": \"ci\",
+                    \"service\": \"frontend\",
+                    \"stage\": \"build\"
+                  },
+                  \"values\": [[\"$(date +%s%N)\", $LOG]]
+                }]
+              }"
+          done                                   # 👈 ADDED
 
 
   # --- PHẦN 3: ĐÓNG GÓI & VẬN CHUYỂN (CD) ---
@@ -118,21 +132,28 @@ jobs:
           chmod +x mvnw
           ./mvnw clean package -DskipTests | tee cd.log     # 👈 ADDED
       
+      # --- SEND CD LOGS TO LOKI CHUNKED ---
       - name: Send CD build logs to Loki
         run: |
-          cat ${{ matrix.service }}/cd.log | jq -R -s '.' | \
-          curl -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"streams\": [{
-                \"stream\": {
-                  \"job\": \"cd\",
-                  \"service\": \"${{ matrix.service }}\",
-                  \"stage\": \"docker-build\"
-                },
-                \"values\": [[\"$(date +%s%N)\", $(cat ${{ matrix.service }}/cd.log | jq -R -s '.')]]
-              }]
-            }"                                       # 👈 ADDED
+          FILE="${{ matrix.service }}/cd.log"
+          CHUNK=5000
+          TOTAL_LINES=$(wc -l < "$FILE")
+          for START in $(seq 1 $CHUNK $TOTAL_LINES); do
+            END=$((START + CHUNK - 1))
+            LOG=$(sed -n "${START},${END}p" "$FILE" | jq -R -s '.')
+            curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"streams\": [{
+                  \"stream\": {
+                    \"job\": \"cd\",
+                    \"service\": \"${{ matrix.service }}\",
+                    \"stage\": \"docker-build\"
+                  },
+                  \"values\": [[\"$(date +%s%N)\", $LOG]]
+                }]
+              }"
+          done                                       # 👈 ADDED
 
           
       # Đăng nhập vào Docker Hub bằng chìa khóa bạn đã cất
@@ -197,17 +218,24 @@ jobs:
             sudo docker-compose up -d
             sudo docker image prune -f
       
+      # --- SEND DEPLOY LOGS TO LOKI CHUNKED ---
       - name: Send Deploy Logs to Loki
         run: |
-          cat deploy.log | jq -R -s '.' | \
-          curl -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"streams\": [{
-                \"stream\": {
-                  \"job\": \"cd\",
-                  \"stage\": \"deploy\"
-                },
-                \"values\": [[\"$(date +%s%N)\", $(cat deploy.log | jq -R -s '.')]]
-              }]
-            }"                                           # 👈 ADDED
+          FILE="deploy.log"
+          CHUNK=5000
+          TOTAL_LINES=$(wc -l < "$FILE")
+          for START in $(seq 1 $CHUNK $TOTAL_LINES); do
+            END=$((START + CHUNK - 1))
+            LOG=$(sed -n "${START},${END}p" "$FILE" | jq -R -s '.')
+            curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"streams\": [{
+                  \"stream\": {
+                    \"job\": \"cd\",
+                    \"stage\": \"deploy\"
+                  },
+                  \"values\": [[\"$(date +%s%N)\", $LOG]]
+                }]
+              }"
+          done                                           # 👈 ADDED

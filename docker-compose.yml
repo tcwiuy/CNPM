@@ -152,7 +152,7 @@ services:
     depends_on:
       - api-gateway
 
-    # --- MONITORING STACK ---
+    # --- MONITORING STACK ----
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus

@@ -34,7 +34,27 @@ jobs:
           cd ${{ matrix.service }}
           chmod +x mvnw
           ./mvnw clean package 
+          ./mvnw clean package | tee build.log        # 👈 ADDED
+      
+      - name: Send build logs to Loki
+        run: |
+          LOG=$(cat ${{ matrix.service }}/build.log | jq -R -s '.')
+          curl -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"streams\": [{
+                \"stream\": {
+                  \"job\": \"ci\",
+                  \"service\": \"${{ matrix.service }}\",
+                  \"stage\": \"build\"
+                },
+                \"values\": [[\"$(date +%s%N)\", $LOG ]]
+              }]
+            }"                                   # 👈 ADDED
 
+  # ==========================================
+  # 2. CI - BUILD FRONTEND
+  # ==========================================
   build-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -47,8 +67,25 @@ jobs:
       - run: |
           cd frontend
           npm install
-          npm run build
+          npm run build | tee build.log             # 👈 ADDED
+      
+      - name: Send FE build logs to Loki
+        run: |
+          LOG=$(cat frontend/build.log | jq -R -s '.')
+          curl -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"streams\": [{
+                \"stream\": {
+                  \"job\": \"ci\",
+                  \"service\": \"frontend\",
+                  \"stage\": \"build\"
+                },
+                \"values\": [[\"$(date +%s%N)\", $LOG ]]
+              }]
+            }"                                   # 👈 ADDED
 
+            
   # --- PHẦN 2: ĐÓNG GÓI & VẬN CHUYỂN (CD) ---
 
   docker-backend:

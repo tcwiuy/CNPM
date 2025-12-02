@@ -34,7 +34,7 @@ services:
       - "6379:6379"
     networks:
       - cnpm-network
-  # --- DISCOVERY SERVER --- 
+  # --- DISCOVERY SERVER ---
   eureka-service:
     image: tcwiuy/eureka-service:latest
     ports:
@@ -57,7 +57,7 @@ services:
     depends_on:
       - redis # Thêm dòng này
       - eureka-service
-      
+
   # --- MICROSERVICES ---
   user-service:
     ports:
@@ -144,7 +144,7 @@ services:
   frontend:
     image: tcwiuy/food-ordering-frontend:latest
     environment:
-    - REACT_APP_API_URL=http://api-gateway:9000
+      - REACT_APP_API_URL=http://api-gateway:9000
     ports:
       - "80:80"
     networks:
@@ -197,9 +197,41 @@ services:
       - cnpm-network
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
-  
+      - loki
+
+  loki:
+    image: grafana/loki:2.8.2
+    container_name: loki
+    ports:
+      - "3100:3100"
+    networks:
+      - cnpm-network
+    volumes:
+      - ./monitoring/loki/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    command:
+      - -config.file=/etc/loki/local-config.yaml
+    depends_on:
+      - prometheus
+
+  promtail:
+    image: grafana/promtail:2.8.2
+    container_name: promtail
+    networks:
+      - cnpm-network
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - -config.file=/etc/promtail/promtail-config.yml
+    depends_on:
+      - loki
+
   mysql:
     image: mysql:8.0.36
     container_name: mysql
@@ -209,13 +241,14 @@ services:
       - cnpm-network
     environment:
       MYSQL_ROOT_PASSWORD: 2407
-      MYSQL_USER: kyvy             
+      MYSQL_USER: kyvy
       MYSQL_PASSWORD: 2407
     volumes:
-        - mysql-data:/var/lib/mysql
-        - ./mysql-init:/docker-entrypoint-initdb.d
+      - mysql-data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
     restart: unless-stopped
 
 volumes:
   grafana-data:
   mysql-data:
+  loki-data:

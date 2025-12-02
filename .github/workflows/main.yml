@@ -45,8 +45,8 @@ jobs:
           for START in $(seq 1 $CHUNK $TOTAL_LINES); do
             END=$((START + CHUNK - 1))
             sed -n "${START},${END}p" "$FILE" \
-              | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "build" --arg ts "$(date +%s%N)" '
-                {streams: [{stream: {job:$job, service:$service, stage:$stage}, values: [[$ts, .]]}]}
+              | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "build" --arg test "test" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test}, values: [[$ts, .]]}]}
               ' \
               | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done
@@ -77,8 +77,8 @@ jobs:
           for START in $(seq 1 $CHUNK $TOTAL_LINES); do
             END=$((START + CHUNK - 1))
             sed -n "${START},${END}p" "$FILE" \
-              | jq -R -s --arg job "ci" --arg service "frontend" --arg stage "build" --arg ts "$(date +%s%N)" '
-                {streams: [{stream: {job:$job, service:$service, stage:$stage}, values: [[$ts, .]]}]}
+              | jq -R -s --arg job "ci" --arg service "frontend" --arg stage "build" --arg test "test" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test}, values: [[$ts, .]]}]}
               ' \
               | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done
@@ -124,8 +124,8 @@ jobs:
           for START in $(seq 1 $CHUNK $TOTAL_LINES); do
             END=$((START + CHUNK - 1))
             sed -n "${START},${END}p" "$FILE" \
-              | jq -R -s --arg job "cd" --arg service "${{ matrix.service }}" --arg stage "docker-build" --arg ts "$(date +%s%N)" '
-                {streams: [{stream: {job:$job, service:$service, stage:$stage}, values: [[$ts, .]]}]}
+              | jq -R -s --arg job "cd" --arg service "${{ matrix.service }}" --arg stage "docker-build" --arg test "test" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test}, values: [[$ts, .]]}]}
               ' \
               | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done
@@ -205,8 +205,8 @@ jobs:
           for START in $(seq 1 $CHUNK $TOTAL_LINES); do
             END=$((START + CHUNK - 1))
             sed -n "${START},${END}p" "$FILE" \
-              | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "deploy" --arg ts "$(date +%s%N)" '
-                {streams: [{stream: {job:$job, service:$service, stage:$stage}, values: [[$ts, .]]}]}
+              | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "deploy" --arg test "test" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test}, values: [[$ts, .]]}]}
               ' \
               | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done

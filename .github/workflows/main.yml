@@ -51,6 +51,24 @@ jobs:
               | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done
 
+      - name: Send build status to Loki (success)
+        if: ${{ success() }}
+        run: |
+          echo "build finished: success" \
+            | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "build" --arg test "test" --arg status "success" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      - name: Send build status to Loki (failure)
+        if: ${{ failure() }}
+        run: |
+          echo "build finished: failure" \
+            | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "build" --arg test "test" --arg status "failure" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
   # ==========================================
   # 2. CI - BUILD FRONTEND
   # ==========================================
@@ -82,6 +100,24 @@ jobs:
               ' \
               | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done
+
+      - name: Send build status to Loki (success)
+        if: ${{ success() }}
+        run: |
+          echo "build finished: success" \
+            | jq -R -s --arg job "ci" --arg service "frontend" --arg stage "build" --arg test "test" --arg status "success" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      - name: Send build status to Loki (failure)
+        if: ${{ failure() }}
+        run: |
+          echo "build finished: failure" \
+            | jq -R -s --arg job "ci" --arg service "frontend" --arg stage "build" --arg test "test" --arg status "failure" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
 
   # --- PHẦN 3: ĐÓNG GÓI & VẬN CHUYỂN (CD) ---
 
@@ -129,6 +165,24 @@ jobs:
               ' \
               | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done
+
+      - name: Send CD status to Loki (success)
+        if: ${{ success() }}
+        run: |
+          echo "cd finished: success" \
+            | jq -R -s --arg job "cd" --arg service "${{ matrix.service }}" --arg stage "docker-build" --arg test "test" --arg status "success" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      - name: Send CD status to Loki (failure)
+        if: ${{ failure() }}
+        run: |
+          echo "cd finished: failure" \
+            | jq -R -s --arg job "cd" --arg service "${{ matrix.service }}" --arg stage "docker-build" --arg test "test" --arg status "failure" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
 
       # Đăng nhập vào Docker Hub bằng chìa khóa bạn đã cất
       - uses: docker/login-action@v3
@@ -210,3 +264,21 @@ jobs:
               ' \
               | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done
+
+      - name: Send deploy status to Loki (success)
+        if: ${{ success() }}
+        run: |
+          echo "deploy finished: success" \
+            | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "deploy" --arg test "test" --arg status "success" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      - name: Send deploy status to Loki (failure)
+        if: ${{ failure() }}
+        run: |
+          echo "deploy finished: failure" \
+            | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "deploy" --arg test "test" --arg status "failure" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-

@@ -31,7 +31,7 @@ class UserServiceApplicationTests {
 		server.createContext("/test", new HttpHandler() {
 			@Override
 			public void handle(HttpExchange exchange) throws IOException {
-				byte[] resp = "ok".getBBytes();
+				byte[] resp = "ok".getBytes();
 				exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=utf-8");
 				exchange.sendResponseHeaders(200, resp.length);
 				exchange.getResponseBody().write(resp);

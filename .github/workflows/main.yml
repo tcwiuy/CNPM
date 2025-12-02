@@ -38,7 +38,7 @@ jobs:
       
       - name: Send build logs to Loki
         run: |
-          LOG=$(cat ${{ matrix.service }}/build.log | jq -R -s '.')
+          cat ${{ matrix.service }}/build.log | jq -R -s '.' | \
           curl -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
             -H "Content-Type: application/json" \
             -d "{
@@ -48,7 +48,7 @@ jobs:
                   \"service\": \"${{ matrix.service }}\",
                   \"stage\": \"build\"
                 },
-                \"values\": [[\"$(date +%s%N)\", $LOG ]]
+                \"values\": [[\"$(date +%s%N)\", $(cat ${{ matrix.service }}/build.log | jq -R -s '.')]]
               }]
             }"                                   # 👈 ADDED
 
@@ -71,7 +71,7 @@ jobs:
       
       - name: Send FE build logs to Loki
         run: |
-          LOG=$(cat frontend/build.log | jq -R -s '.')
+          cat frontend/build.log | jq -R -s '.' | \
           curl -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
             -H "Content-Type: application/json" \
             -d "{
@@ -81,7 +81,7 @@ jobs:
                   \"service\": \"frontend\",
                   \"stage\": \"build\"
                 },
-                \"values\": [[\"$(date +%s%N)\", $LOG ]]
+                \"values\": [[\"$(date +%s%N)\", $(cat frontend/build.log | jq -R -s '.')]]
               }]
             }"                                   # 👈 ADDED
 
@@ -120,9 +120,9 @@ jobs:
       
       - name: Send CD build logs to Loki
         run: |
-          LOG=$(cat ${{ matrix.service }}/cd.log | jq -R -s '.')
+          cat ${{ matrix.service }}/cd.log | jq -R -s '.' | \
           curl -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
-            -H "Content-Type": application/json \
+            -H "Content-Type: application/json" \
             -d "{
               \"streams\": [{
                 \"stream\": {
@@ -130,7 +130,7 @@ jobs:
                   \"service\": \"${{ matrix.service }}\",
                   \"stage\": \"docker-build\"
                 },
-                \"values\": [[\"$(date +%s%N)\", $LOG ]]
+                \"values\": [[\"$(date +%s%N)\", $(cat ${{ matrix.service }}/cd.log | jq -R -s '.')]]
               }]
             }"                                       # 👈 ADDED
 
@@ -199,15 +199,15 @@ jobs:
       
       - name: Send Deploy Logs to Loki
         run: |
-          LOG=$(cat deploy.log | jq -R -s '.')
+          cat deploy.log | jq -R -s '.' | \
           curl -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" \
-            -H "Content-Type": application/json \
+            -H "Content-Type: application/json" \
             -d "{
               \"streams\": [{
                 \"stream\": {
                   \"job\": \"cd\",
                   \"stage\": \"deploy\"
                 },
-                \"values\": [[\"$(date +%s%N)\", $LOG ]]
+                \"values\": [[\"$(date +%s%N)\", $(cat deploy.log | jq -R -s '.')]]
               }]
             }"                                           # 👈 ADDED

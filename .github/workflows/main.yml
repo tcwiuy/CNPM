@@ -87,6 +87,34 @@ jobs:
               | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done
 
+      # --- SEND PER-TESTCLASS RESULTS FROM SUREFIRE REPORTS ---
+      - name: Send Unit Test report files to Loki
+        run: |
+          REPORT_DIR="${{ matrix.service }}/target/surefire-reports"
+          if [ ! -d "$REPORT_DIR" ]; then
+            echo "No surefire reports at $REPORT_DIR"
+            exit 0
+          fi
+          # Parse all *-report.txt files for class and summary lines
+          for f in "$REPORT_DIR"/*-report.txt; do
+            [ -e "$f" ] || continue
+            CLASSNAME=$(basename "$f" | sed 's/-report.txt$//')
+            SUMMARY=$(grep -m1 -E "^Tests run:" "$f" || echo "Tests run: 0, Failures: 0, Errors: 0, Skipped: 0")
+            RUN=$(echo "$SUMMARY" | sed -n 's/.*Tests run: \([0-9]\+\).*$/\1/p')
+            FAIL=$(echo "$SUMMARY" | sed -n 's/.*Failures: \([0-9]\+\).*$/\1/p')
+            ERR=$(echo "$SUMMARY" | sed -n 's/.*Errors: \([0-9]\+\).*$/\1/p')
+            SKIP=$(echo "$SUMMARY" | sed -n 's/.*Skipped: \([0-9]\+\).*$/\1/p')
+            echo "$SUMMARY -- in $CLASSNAME" \
+              | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "unit-tests" --arg class "$CLASSNAME" \
+                     --arg tests_run "$RUN" --arg failures "$FAIL" --arg errors "$ERR" --arg skipped "$SKIP" --arg ts "$(date +%s%N)" '
+                  {streams: [{
+                    stream: {job:$job, service:$service, stage:$stage, class:$class, tests_run:$tests_run, failures:$failures, errors:$errors, skipped:$skipped},
+                    values: [[$ts, .]]
+                  }]}
+                ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+          done
+
       # --- RUN INTEGRATION TESTS (MAVEN VERIFY / FAILSAFE) ---
       - name: Run Integration Tests
         run: |
@@ -144,6 +172,33 @@ jobs:
               | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "integration-tests" --arg ts "$(date +%s%N)" '
                 {streams: [{stream: {job:$job, service:$service, stage:$stage}, values: [[$ts, .]]}]}
               ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+          done
+
+      # --- SEND PER-TESTCLASS RESULTS FROM FAILSAFE REPORTS ---
+      - name: Send Integration Test report files to Loki
+        run: |
+          REPORT_DIR="${{ matrix.service }}/target/failsafe-reports"
+          if [ ! -d "$REPORT_DIR" ]; then
+            echo "No failsafe reports at $REPORT_DIR"
+            exit 0
+          fi
+          for f in "$REPORT_DIR"/*-report.txt; do
+            [ -e "$f" ] || continue
+            CLASSNAME=$(basename "$f" | sed 's/-report.txt$//')
+            SUMMARY=$(grep -m1 -E "^Tests run:" "$f" || echo "Tests run: 0, Failures: 0, Errors: 0, Skipped: 0")
+            RUN=$(echo "$SUMMARY" | sed -n 's/.*Tests run: \([0-9]\+\).*$/\1/p')
+            FAIL=$(echo "$SUMMARY" | sed -n 's/.*Failures: \([0-9]\+\).*$/\1/p')
+            ERR=$(echo "$SUMMARY" | sed -n 's/.*Errors: \([0-9]\+\).*$/\1/p')
+            SKIP=$(echo "$SUMMARY" | sed -n 's/.*Skipped: \([0-9]\+\).*$/\1/p')
+            echo "$SUMMARY -- in $CLASSNAME" \
+              | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "integration-tests" --arg class "$CLASSNAME" \
+                     --arg tests_run "$RUN" --arg failures "$FAIL" --arg errors "$ERR" --arg skipped "$SKIP" --arg ts "$(date +%s%N)" '
+                  {streams: [{
+                    stream: {job:$job, service:$service, stage:$stage, class:$class, tests_run:$tests_run, failures:$failures, errors:$errors, skipped:$skipped},
+                    values: [[$ts, .]]
+                  }]}
+                ' \
               | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
           done
 

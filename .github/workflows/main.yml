@@ -63,6 +63,30 @@ jobs:
               ' \
             | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
 
+      # --- SEND UNIT TEST LOGS (FILTERED) TO LOKI ---
+      - name: Send Unit Test logs to Loki
+        run: |
+          FILE="${{ matrix.service }}/build.log"
+          if [ ! -f "$FILE" ] || [ ! -s "$FILE" ]; then
+            echo "No unit test log for ${{ matrix.service }}"
+            exit 0
+          fi
+          # Only keep concise lines that show per-testclass timings
+          grep -E "Time elapsed: .* -- in " "$FILE" > "${{ matrix.service }}/ut.log" || true
+          if [ ! -s "${{ matrix.service }}/ut.log" ]; then
+            echo "No concise unit test lines found" > "${{ matrix.service }}/ut.log"
+          fi
+          CHUNK=5000
+          TOTAL_LINES=$(wc -l < "${{ matrix.service }}/ut.log")
+          for START in $(seq 1 $CHUNK $TOTAL_LINES); do
+            END=$((START + CHUNK - 1))
+            sed -n "${START},${END}p" "${{ matrix.service }}/ut.log" \
+              | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "unit-tests" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage}, values: [[$ts, .]]}]}
+              ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+          done
+
       # --- RUN INTEGRATION TESTS (MAVEN VERIFY / FAILSAFE) ---
       - name: Run Integration Tests
         run: |

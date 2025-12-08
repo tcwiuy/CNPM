@@ -68,7 +68,14 @@ jobs:
         run: |
           cd ${{ matrix.service }}
           chmod +x mvnw
-          ./mvnw -q verify | tee it.log
+          # Try Failsafe (integration-test + verify). If not configured, fallback to Surefire with IT pattern.
+          if ./mvnw -q -DskipITs=false failsafe:integration-test failsafe:verify | tee it.tmp; then
+            mv it.tmp it.log
+          else
+            echo "Failsafe not configured or failed, falling back to Surefire with -Dtest=*IT*" | tee it.fallback
+            ./mvnw -q -Dtest=*IT* test | tee -a it.fallback
+            mv it.fallback it.log
+          fi
 
       - name: Send Integration Test Summary to Loki
         run: |

@@ -35,6 +35,34 @@ jobs:
           chmod +x mvnw
           ./mvnw clean package | tee build.log        # 👈 ADDED
 
+      # --- PARSE AND SEND MAVEN TEST SUMMARY TO LOKI ---
+      - name: Send Test Summary to Loki
+        run: |
+          FILE="${{ matrix.service }}/build.log"
+          # Extract the first summary line like: "Tests run: 3, Failures: 0, Errors: 0, Skipped: 0"
+          SUMMARY_LINE=$(grep -m1 -E "^\[INFO\] Tests run:" "$FILE" | sed 's/^\[INFO\] //')
+          if [ -z "$SUMMARY_LINE" ]; then
+            SUMMARY_LINE="Tests run: 0, Failures: 0, Errors: 0, Skipped: 0"
+          fi
+
+          RUN=$(echo "$SUMMARY_LINE" | sed -n 's/.*Tests run: \([0-9]\+\).*$/\1/p')
+          FAIL=$(echo "$SUMMARY_LINE" | sed -n 's/.*Failures: \([0-9]\+\).*$/\1/p')
+          ERR=$(echo "$SUMMARY_LINE" | sed -n 's/.*Errors: \([0-9]\+\).*$/\1/p')
+          SKIP=$(echo "$SUMMARY_LINE" | sed -n 's/.*Skipped: \([0-9]\+\).*$/\1/p')
+
+          MSG="${SUMMARY_LINE}"
+
+          echo "$MSG" \
+            | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "tests" \
+                   --arg tests_run "$RUN" --arg failures "$FAIL" --arg errors "$ERR" --arg skipped "$SKIP" \
+                   --arg ts "$(date +%s%N)" '
+                {streams: [{
+                  stream: {job:$job, service:$service, stage:$stage, tests_run:$tests_run, failures:$failures, errors:$errors, skipped:$skipped},
+                  values: [[$ts, .]]
+                }]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
       # --- SEND BUILD LOGS TO LOKI CHUNKED ---
       - name: Send build logs to Loki
         run: |

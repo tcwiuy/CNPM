@@ -33,7 +33,6 @@ jobs:
         run: |
           cd ${{ matrix.service }}
           chmod +x mvnw
-          ./mvnw clean package 
           ./mvnw clean package | tee build.log        # 👈 ADDED
 
       # --- SEND BUILD LOGS TO LOKI CHUNKED ---

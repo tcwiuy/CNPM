@@ -63,6 +63,55 @@ jobs:
               ' \
             | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
 
+      # --- RUN INTEGRATION TESTS (MAVEN VERIFY / FAILSAFE) ---
+      - name: Run Integration Tests
+        run: |
+          cd ${{ matrix.service }}
+          chmod +x mvnw
+          ./mvnw -q verify | tee it.log
+
+      - name: Send Integration Test Summary to Loki
+        run: |
+          FILE="${{ matrix.service }}/it.log"
+          # Extract Failsafe/Surefire style summary
+          SUMMARY_LINE=$(grep -m1 -E "^\[INFO\] Tests run:" "$FILE" | sed 's/^\[INFO\] //')
+          if [ -z "$SUMMARY_LINE" ]; then
+            SUMMARY_LINE="Tests run: 0, Failures: 0, Errors: 0, Skipped: 0"
+          fi
+
+          RUN=$(echo "$SUMMARY_LINE" | sed -n 's/.*Tests run: \([0-9]\+\).*$/\1/p')
+          FAIL=$(echo "$SUMMARY_LINE" | sed -n 's/.*Failures: \([0-9]\+\).*$/\1/p')
+          ERR=$(echo "$SUMMARY_LINE" | sed -n 's/.*Errors: \([0-9]\+\).*$/\1/p')
+          SKIP=$(echo "$SUMMARY_LINE" | sed -n 's/.*Skipped: \([0-9]\+\).*$/\1/p')
+
+          MSG="${SUMMARY_LINE}"
+
+          echo "$MSG" \
+            | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "integration-tests" \
+                   --arg tests_run "$RUN" --arg failures "$FAIL" --arg errors "$ERR" --arg skipped "$SKIP" \
+                   --arg ts "$(date +%s%N)" '
+                {streams: [{
+                  stream: {job:$job, service:$service, stage:$stage, tests_run:$tests_run, failures:$failures, errors:$errors, skipped:$skipped},
+                  values: [[$ts, .]]
+                }]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      # --- SANITY CHECK (TỔNG KẾT NHANH) ---
+      - name: Send Sanity Status to Loki
+        run: |
+          BUILD_OK=$(grep -c "BUILD SUCCESS" "${{ matrix.service }}/build.log" || true)
+          IT_SUM=$(grep -m1 -E "^\[INFO\] Tests run:" "${{ matrix.service }}/it.log" | sed 's/^\[INFO\] //' || echo "Tests run: 0, Failures: 0, Errors: 0, Skipped: 0")
+          FAIL=$(echo "$IT_SUM" | sed -n 's/.*Failures: \([0-9]\+\).*$/\1/p')
+          ERR=$(echo "$IT_SUM" | sed -n 's/.*Errors: \([0-9]\+\).*$/\1/p')
+          STATUS="pass"
+          if [ "$BUILD_OK" -eq 0 ] || [ "$FAIL" -gt 0 ] || [ "$ERR" -gt 0 ]; then STATUS="fail"; fi
+          echo "sanity: $STATUS" \
+            | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "sanity" --arg status "$STATUS" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
       # --- SEND BUILD LOGS TO LOKI CHUNKED ---
       - name: Send build logs to Loki
         run: |

@@ -31,7 +31,7 @@ public class RestaurantUnitTest {
         Restaurant r = Restaurant.builder()
                 .restaurantId(2)
                 .name("Bun House")
-                .address("456 Street")
+                address("456 Street")
                 .build();
 
         MenuItem m = MenuItem.builder()

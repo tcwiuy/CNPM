@@ -37,7 +37,7 @@ public class RestaurantUnitTest {
         MenuItem m = MenuItem.builder()
                 .itemId(10)
                 .name("Bun cha")
-                .price(new BigDecimal("4.50"))
+                .price(new BigDecimal())
                 .stock(5)
                 .imageUrl("bun.jpg")
                 .restaurant(r)

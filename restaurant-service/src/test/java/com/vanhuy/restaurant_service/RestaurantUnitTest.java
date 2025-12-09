@@ -48,6 +48,6 @@ public class RestaurantUnitTest {
         assertSame(r, m.getRestaurant());
 
         BigDecimal total = m.getPrice().multiply(new BigDecimal(m.getStock()));
-        assertEquals(0, new BigDecimal(l).compareTo(total));
+        assertEquals(0, new BigDecimal("22.50").compareTo(total));
     }
 }

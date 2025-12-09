@@ -301,11 +301,30 @@ jobs:
               ' \
             | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
 
+      # --- CD SANITY: ghi nhận tổng trạng thái sau deploy ---
+      - name: Send CD Sanity (pass)
+        if: ${{ success() }}
+        run: |
+          echo "cd sanity: pass" \
+            | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "sanity" --arg status "pass" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
       - name: Send deploy status to Loki (failure)
         if: ${{ failure() }}
         run: |
           echo "deploy finished: failure" \
             | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "deploy" --arg test "test" --arg status "failure" --arg ts "$(date +%s%N)" '
                 {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      - name: Send CD Sanity (fail)
+        if: ${{ failure() }}
+        run: |
+          echo "cd sanity: fail" \
+            | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "sanity" --arg status "fail" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, status:$status}, values: [[$ts, .]]}]}
               ' \
             | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-

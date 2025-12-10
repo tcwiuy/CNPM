@@ -1,0 +1,61 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+
+  # =======================================================
+  # 1) Lấy log từ Docker container (docker_sd)
+  # =======================================================
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+
+    pipeline_stages:
+      - docker: {}      # Parse timestamp & format Docker log
+
+    relabel_configs:
+      # Lấy service name theo docker-compose service
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: service
+
+      # Nếu không có service → fallback lấy từ tên container
+      - source_labels: [__meta_docker_container_name]
+        regex: "^/?([^/]+)$"
+        target_label: container
+      - source_labels: [container]
+        regex: "^(.+?)(?:-[0-9]+)?$"
+        target_label: service
+
+      # Lấy tên project compose
+      - source_labels: [__meta_docker_container_label_com_docker_compose_project]
+        target_label: compose_project
+
+  # =======================================================
+  # 2) Đọc log file của container (mức thấp hơn)
+  # =======================================================
+  - job_name: container-logs
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          job: containerlogs
+          __path__: /var/lib/docker/containers/*/*.log
+    pipeline_stages:
+      - docker: {}
+
+  # =======================================================
+  # 3) Log host của VPS
+  # =======================================================
+  - job_name: host-logs
+    static_configs:
+      - targets: ["localhost"]
+        labels:
+          job: hostlogs
+          __path__: /var/log/*.log

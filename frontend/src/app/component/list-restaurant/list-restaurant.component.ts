@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { RestaurantService } from '../../service/restaurant.service';
 import { Restaurant } from '../../dto/Restaurant';
 import { Router } from '@angular/router';
+import { Page } from '../../dto/Page';
 
 @Component({
   selector: 'app-list-restaurant',
@@ -26,7 +27,8 @@ export class ListRestaurantComponent {
 
   loadRestaurants(): void {
     this.restaurantService.getAllRestaurants(this.currentPage, this.pageSize, this.keyword)
-      .subscribe(response => {
+      .subscribe((response: Page<Restaurant>) => {
+        console.log('API Response:', response); // Log dữ liệu trả về từ API
         this.restaurants = response.content;
         this.totalPages = response.totalPages;
       });

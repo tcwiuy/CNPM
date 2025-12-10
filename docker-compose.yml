@@ -1,3 +1,6 @@
+networks:
+  cnpm-network:
+    driver: bridge
 services:
   # --- INFRASTRUCTURE ---
   zookeeper:
@@ -7,6 +10,8 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "22181:2181"
+    networks:
+      - cnpm-network
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
@@ -21,16 +26,21 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - cnpm-network
   redis:
     image: redis:alpine
     ports:
       - "6379:6379"
-
-  # --- DISCOVERY SERVER --- 
+    networks:
+      - cnpm-network
+  # --- DISCOVERY SERVER ---
   eureka-service:
     image: tcwiuy/eureka-service:latest
     ports:
       - "8761:8761"
+    networks:
+      - cnpm-network
     environment:
       - EUREKA_CLIENT_REGISTER_WITH_EUREKA=false
       - EUREKA_CLIENT_FETCH_REGISTRY=false
@@ -42,9 +52,11 @@ services:
       - "9000:9000"
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+    networks:
+      - cnpm-network
     depends_on:
-      - eureka-service
       - redis # Thêm dòng này
+      - eureka-service
 
   # --- MICROSERVICES ---
   user-service:
@@ -53,6 +65,14 @@ services:
     image: tcwiuy/user-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/user_db
+      - SPRING_DATASOURCE_USERNAME=kyvy
+      - SPRING_DATASOURCE_PASSWORD=2407
+      - APP_BASE_URL=http://api-gateway:9000
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
+      - EUREKA_INSTANCE_HOSTNAME=user-service
+    networks:
+      - cnpm-network
     depends_on:
       - mysql
       - eureka-service
@@ -65,6 +85,14 @@ services:
     image: tcwiuy/restaurant-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - APP_BASE_URL=http://api-gateway:9000
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/restaurant_db
+      - SPRING_DATASOURCE_USERNAME=kyvy
+      - SPRING_DATASOURCE_PASSWORD=2407
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
+      - EUREKA_INSTANCE_HOSTNAME=restaurant-service
+    networks:
+      - cnpm-network
     depends_on:
       - mysql
       - eureka-service
@@ -77,6 +105,14 @@ services:
     image: tcwiuy/order-service:latest
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/order_db
+      - SPRING_DATASOURCE_USERNAME=kyvy
+      - SPRING_DATASOURCE_PASSWORD=2407
+      - APP_BASE_URL=http://api-gateway:9000
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
+      - EUREKA_INSTANCE_HOSTNAME=order-service
+    networks:
+      - cnpm-network
     depends_on:
       - mysql
       - eureka-service
@@ -91,6 +127,14 @@ services:
     environment:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-service:8761/eureka/
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/notification_db
+      - SPRING_DATASOURCE_USERNAME=kyvy
+      - SPRING_DATASOURCE_PASSWORD=2407
+      - APP_BASE_URL=http://api-gateway:9000
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
+      - EUREKA_INSTANCE_HOSTNAME=notification-service
+    networks:
+      - cnpm-network
     depends_on:
       - mysql
       - eureka-service
@@ -99,8 +143,12 @@ services:
   # --- FRONTEND ---
   frontend:
     image: tcwiuy/food-ordering-frontend:latest
+    environment:
+      - REACT_APP_API_URL=http://api-gateway:9000
     ports:
       - "80:80"
+    networks:
+      - cnpm-network
     depends_on:
       - api-gateway
 
@@ -114,6 +162,8 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
     ports:
       - "9090:9090"
+    networks:
+      - cnpm-network
     depends_on:
       - api-gateway
       - user-service
@@ -130,6 +180,8 @@ services:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
     ports:
       - "9093:9093"
+    networks:
+      - cnpm-network
     depends_on:
       - prometheus
 
@@ -141,25 +193,62 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - cnpm-network
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
-  
+      - loki
+
+  loki:
+    image: grafana/loki:2.8.2
+    container_name: loki
+    ports:
+      - "3100:3100"
+    networks:
+      - cnpm-network
+    volumes:
+      - ./monitoring/loki/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    command:
+      - -config.file=/etc/loki/local-config.yaml
+    depends_on:
+      - prometheus
+
+  promtail:
+    image: grafana/promtail:2.8.2
+    container_name: promtail
+    networks:
+      - cnpm-network
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - -config.file=/etc/promtail/promtail-config.yml
+    depends_on:
+      - loki
+
   mysql:
     image: mysql:8.0.36
     container_name: mysql
     ports:
       - "3306:3306"
+    networks:
+      - cnpm-network
     environment:
       MYSQL_ROOT_PASSWORD: 2407
-      MYSQL_USER: kyvy             
+      MYSQL_USER: kyvy
       MYSQL_PASSWORD: 2407
     volumes:
-        - mysql-data:/var/lib/mysql
-        - ./mysql-init:/docker-entrypoint-initdb.d
+      - mysql-data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
     restart: unless-stopped
 
 volumes:
   grafana-data:
   mysql-data:
+  loki-data:

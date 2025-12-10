@@ -33,8 +33,72 @@ jobs:
         run: |
           cd ${{ matrix.service }}
           chmod +x mvnw
-          ./mvnw clean package 
+          ./mvnw clean package | tee build.log        # 👈 ADDED
 
+      # --- PARSE AND SEND MAVEN TEST SUMMARY TO LOKI ---
+      - name: Send Test Summary to Loki
+        run: |
+          FILE="${{ matrix.service }}/build.log"
+          # Extract the first summary line like: "Tests run: 3, Failures: 0, Errors: 0, Skipped: 0"
+          SUMMARY_LINE=$(grep -m1 -E "^\[INFO\] Tests run:" "$FILE" | sed 's/^\[INFO\] //')
+          if [ -z "$SUMMARY_LINE" ]; then
+            SUMMARY_LINE="Tests run: 0, Failures: 0, Errors: 0, Skipped: 0"
+          fi
+
+          RUN=$(echo "$SUMMARY_LINE" | sed -n 's/.*Tests run: \([0-9]\+\).*$/\1/p')
+          FAIL=$(echo "$SUMMARY_LINE" | sed -n 's/.*Failures: \([0-9]\+\).*$/\1/p')
+          ERR=$(echo "$SUMMARY_LINE" | sed -n 's/.*Errors: \([0-9]\+\).*$/\1/p')
+          SKIP=$(echo "$SUMMARY_LINE" | sed -n 's/.*Skipped: \([0-9]\+\).*$/\1/p')
+
+          MSG="${SUMMARY_LINE}"
+
+          echo "$MSG" \
+            | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "tests" \
+                   --arg tests_run "$RUN" --arg failures "$FAIL" --arg errors "$ERR" --arg skipped "$SKIP" \
+                   --arg ts "$(date +%s%N)" '
+                {streams: [{
+                  stream: {job:$job, service:$service, stage:$stage, tests_run:$tests_run, failures:$failures, errors:$errors, skipped:$skipped},
+                  values: [[$ts, .]]
+                }]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      # --- SEND BUILD LOGS TO LOKI CHUNKED ---
+      - name: Send build logs to Loki
+        run: |
+          FILE="${{ matrix.service }}/build.log"
+          CHUNK=5000
+          TOTAL_LINES=$(wc -l < "$FILE")
+          for START in $(seq 1 $CHUNK $TOTAL_LINES); do
+            END=$((START + CHUNK - 1))
+            sed -n "${START},${END}p" "$FILE" \
+              | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "build" --arg test "test" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test}, values: [[$ts, .]]}]}
+              ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+          done
+
+      - name: Send build status to Loki (success)
+        if: ${{ success() }}
+        run: |
+          echo "build finished: success" \
+            | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "build" --arg test "test" --arg status "success" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      - name: Send build status to Loki (failure)
+        if: ${{ failure() }}
+        run: |
+          echo "build finished: failure" \
+            | jq -R -s --arg job "ci" --arg service "${{ matrix.service }}" --arg stage "build" --arg test "test" --arg status "failure" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+  # ==========================================
+  # 2. CI - BUILD FRONTEND
+  # ==========================================
   build-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -47,9 +111,42 @@ jobs:
       - run: |
           cd frontend
           npm install
-          npm run build
+          npm run build | tee build.log             # 👈 ADDED
 
-  # --- PHẦN 2: ĐÓNG GÓI & VẬN CHUYỂN (CD) ---
+      # --- SEND FRONTEND BUILD LOGS TO LOKI CHUNKED ---
+      - name: Send FE build logs to Loki
+        run: |
+          FILE="frontend/build.log"
+          CHUNK=5000
+          TOTAL_LINES=$(wc -l < "$FILE")
+          for START in $(seq 1 $CHUNK $TOTAL_LINES); do
+            END=$((START + CHUNK - 1))
+            sed -n "${START},${END}p" "$FILE" \
+              | jq -R -s --arg job "ci" --arg service "frontend" --arg stage "build" --arg test "test" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test}, values: [[$ts, .]]}]}
+              ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+          done
+
+      - name: Send build status to Loki (success)
+        if: ${{ success() }}
+        run: |
+          echo "build finished: success" \
+            | jq -R -s --arg job "ci" --arg service "frontend" --arg stage "build" --arg test "test" --arg status "success" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      - name: Send build status to Loki (failure)
+        if: ${{ failure() }}
+        run: |
+          echo "build finished: failure" \
+            | jq -R -s --arg job "ci" --arg service "frontend" --arg stage "build" --arg test "test" --arg status "failure" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+  # --- PHẦN 3: ĐÓNG GÓI & VẬN CHUYỂN (CD) ---
 
   docker-backend:
     needs: build-backend # Bắt buộc phần CI phải xanh thì mới làm phần này
@@ -79,7 +176,40 @@ jobs:
         run: |
           cd ${{ matrix.service }}
           chmod +x mvnw
-          ./mvnw clean package -DskipTests
+          ./mvnw clean package -DskipTests | tee cd.log     # 👈 ADDED
+
+      # --- SEND CD LOGS TO LOKI CHUNKED ---
+      - name: Send CD build logs to Loki
+        run: |
+          FILE="${{ matrix.service }}/cd.log"
+          CHUNK=5000
+          TOTAL_LINES=$(wc -l < "$FILE")
+          for START in $(seq 1 $CHUNK $TOTAL_LINES); do
+            END=$((START + CHUNK - 1))
+            sed -n "${START},${END}p" "$FILE" \
+              | jq -R -s --arg job "cd" --arg service "${{ matrix.service }}" --arg stage "docker-build" --arg test "test" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test}, values: [[$ts, .]]}]}
+              ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+          done
+
+      - name: Send CD status to Loki (success)
+        if: ${{ success() }}
+        run: |
+          echo "cd finished: success" \
+            | jq -R -s --arg job "cd" --arg service "${{ matrix.service }}" --arg stage "docker-build" --arg test "test" --arg status "success" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      - name: Send CD status to Loki (failure)
+        if: ${{ failure() }}
+        run: |
+          echo "cd finished: failure" \
+            | jq -R -s --arg job "cd" --arg service "${{ matrix.service }}" --arg stage "docker-build" --arg test "test" --arg status "failure" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
 
       # Đăng nhập vào Docker Hub bằng chìa khóa bạn đã cất
       - uses: docker/login-action@v3
@@ -97,6 +227,9 @@ jobs:
           # Đặt tên thẻ bài: ten-user/ten-service:latest
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
 
+  # ==========================================
+  # 4. CD - DOCKER FRONTEND
+  # ==========================================
   docker-frontend:
     needs: build-frontend
     runs-on: ubuntu-latest
@@ -138,3 +271,60 @@ jobs:
             sudo docker-compose pull
             sudo docker-compose up -d
             sudo docker image prune -f
+
+      # --- SEND DEPLOY LOGS TO LOKI CHUNKED ---
+      - name: Send Deploy Logs to Loki
+        run: |
+          FILE="deploy.log"
+          # If the deploy log doesn't exist or is empty, skip upload to avoid failing the job
+          if [ ! -f "$FILE" ] || [ ! -s "$FILE" ]; then
+            echo "File $FILE not found or empty, skipping Loki upload"
+            exit 0
+          fi
+          CHUNK=5000
+          TOTAL_LINES=$(wc -l < "$FILE")
+          for START in $(seq 1 $CHUNK $TOTAL_LINES); do
+            END=$((START + CHUNK - 1))
+            sed -n "${START},${END}p" "$FILE" \
+              | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "deploy" --arg test "test" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test}, values: [[$ts, .]]}]}
+              ' \
+              | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+          done
+
+      - name: Send deploy status to Loki (success)
+        if: ${{ success() }}
+        run: |
+          echo "deploy finished: success" \
+            | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "deploy" --arg test "test" --arg status "success" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      # --- CD SANITY: ghi nhận tổng trạng thái sau deploy ---
+      - name: Send CD Sanity (pass)
+        if: ${{ success() }}
+        run: |
+          echo "cd sanity: pass" \
+            | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "sanity" --arg status "pass" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      - name: Send deploy status to Loki (failure)
+        if: ${{ failure() }}
+        run: |
+          echo "deploy finished: failure" \
+            | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "deploy" --arg test "test" --arg status "failure" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, test:$test, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-
+
+      - name: Send CD Sanity (fail)
+        if: ${{ failure() }}
+        run: |
+          echo "cd sanity: fail" \
+            | jq -R -s --arg job "cd" --arg service "deploy" --arg stage "sanity" --arg status "fail" --arg ts "$(date +%s%N)" '
+                {streams: [{stream: {job:$job, service:$service, stage:$stage, status:$status}, values: [[$ts, .]]}]}
+              ' \
+            | curl -s -X POST "${{ secrets.LOKI_URL }}/loki/api/v1/push" -H "Content-Type: application/json" --data-binary @-

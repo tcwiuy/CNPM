@@ -11,7 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType; 
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,20 +29,19 @@ public class RestaurantController {
     @PostMapping
     public ResponseEntity<RestaurantDTO> createRestaurant(@RequestBody RestaurantDTO restaurantDTO) {
         RestaurantDTO createdRestaurant = restaurantService.createRestaurant(restaurantDTO);
-        return new ResponseEntity<>(createdRestaurant ,HttpStatus.CREATED);
+        return new ResponseEntity<>(createdRestaurant, HttpStatus.CREATED);
     }
 
     @GetMapping
     public ResponseEntity<Page<RestaurantDTO>> getAllRestaurants(@RequestParam int page,
-                                                                 @RequestParam int size ,
-                                                                 @RequestParam(required = false) String keyword) {
+            @RequestParam int size,
+            @RequestParam(required = false) String keyword) {
         Pageable pageable = PageRequest.of(page, size);
         if (keyword != null && !keyword.isEmpty()) {
             return ResponseEntity.ok(restaurantService.searchRestaurants(keyword, pageable));
         }
         return ResponseEntity.ok(restaurantService.getRestaurantsByPage(pageable));
     }
-
 
     @GetMapping("/images/{filename:.+}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) {
@@ -53,8 +52,7 @@ public class RestaurantController {
                 .header(HttpHeaders.CACHE_CONTROL, "max-age=31536000")
                 .body(resource);
     }
-    
-    
+
     @PostMapping(value = "/{restaurantId}/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RestaurantDTO> uploadImage(
             @PathVariable Integer restaurantId,
@@ -68,4 +66,15 @@ public class RestaurantController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @DeleteMapping("/{restaurantId}")
+    public ResponseEntity<Void> deleteRestaurant(@PathVariable Integer restaurantId) {
+        try {
+            restaurantService.deleteRestaurant(restaurantId);
+            return ResponseEntity.noContent().build(); // 204
+        } catch (RestaurantNotFoundException e) {
+            return ResponseEntity.notFound().build(); // 404
+        }
+    }
+
 }
